@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git remote set-url origin https://github.com/intigam200/tradeguard.git)",
+      "Bash(git branch -M main)",
+      "Bash(git add .)"
+    ]
+  }
+}
