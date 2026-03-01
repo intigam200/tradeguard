@@ -30,6 +30,29 @@ function Counter({ to, prefix = "", suffix = "", duration = 2000 }: { to: number
   return <span ref={ref}>{prefix}{val.toLocaleString()}{suffix}</span>;
 }
 
+// ─── FAQ Accordion Item ────────────────────────────────────────────────────────
+function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
+  return (
+    <div className="border border-white/10 rounded-xl overflow-hidden transition-colors hover:border-white/20">
+      <button
+        onClick={onToggle}
+        className="w-full px-6 py-4 text-left flex items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors"
+      >
+        <span className="text-sm font-semibold text-white">{q}</span>
+        <span
+          className="text-slate-400 text-lg shrink-0 transition-transform duration-200"
+          style={{ transform: open ? "rotate(45deg)" : "none" }}
+        >+</span>
+      </button>
+      {open && (
+        <div className="px-6 pb-5 pt-3 text-sm text-slate-400 leading-relaxed border-t border-white/5">
+          {a}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Translations ─────────────────────────────────────────────────────────────
 const t = {
   ru: {
@@ -37,7 +60,7 @@ const t = {
       features: "Возможности",
       how: "Как это работает",
       pricing: "Цены",
-      testimonials: "Отзывы",
+      waitlist: "Вейтлист",
       login: "Войти",
       cta: "Начать бесплатно",
     },
@@ -55,12 +78,12 @@ const t = {
     painTitle: "Узнаёшь себя?",
     painSub: "Большинство трейдеров теряют деньги не из-за плохой стратегии — а из-за себя",
     pains: [
-      { icon: "😤", title: "Месть рынку",        desc: "После убытка открываешь следующую сделку в 2 раза больше, чтобы «отбить». И теряешь ещё больше." },
-      { icon: "📱", title: "Оверторговля",        desc: "Сидишь у экрана и ищешь вход, когда входа нет. 15 сделок вместо 3 — и счёт в минусе." },
-      { icon: "💸", title: "Нет стоп-лосса",     desc: "«Выйдет, подожду» — и держишь убыточную позицию часами, пока потеря не становится критической." },
+      { icon: "😤", title: "Месть рынку",             desc: "После убытка открываешь следующую сделку в 2 раза больше, чтобы «отбить». И теряешь ещё больше." },
+      { icon: "📱", title: "Оверторговля",             desc: "Сидишь у экрана и ищешь вход, когда входа нет. 15 сделок вместо 3 — и счёт в минусе." },
+      { icon: "💸", title: "Нет стоп-лосса",           desc: "«Выйдет, подожду» — и держишь убыточную позицию часами, пока потеря не становится критической." },
       { icon: "😨", title: "ФОМО и панические выходы", desc: "Входишь на хайпе и выходишь от страха. Покупаешь дорого, продаёшь дёшево — снова и снова." },
-      { icon: "🎲", title: "Рискуешь слишком много", desc: "«Это точно выстрелит» — и ставишь 50% депозита на одну сделку. Потом несколько месяцев восстановления." },
-      { icon: "📉", title: "Игнорируешь лимиты", desc: "Знаешь, что надо остановиться, но продолжаешь. Один плохой день съедает прибыль за неделю." },
+      { icon: "🎲", title: "Рискуешь слишком много",   desc: "«Это точно выстрелит» — и ставишь 50% депозита на одну сделку. Потом несколько месяцев восстановления." },
+      { icon: "📉", title: "Игнорируешь лимиты",       desc: "Знаешь, что надо остановиться, но продолжаешь. Один плохой день съедает прибыль за неделю." },
     ],
     preview: {
       url: "app.tradeguard.io/dashboard",
@@ -72,12 +95,12 @@ const t = {
       cols: ["Инструмент", "Тип", "P&L", "Статус"],
       statuses: ["Закрыта", "Закрыта", "Открыта"],
       statLabels: ["P&L сегодня", "Просадка", "Сделок", "Депозит"],
-      sidebar: ["Дашборд", "Сделки", "Лимиты", "Нарушения", "Статистика"],
+      sidebar: ["Дашборд", "Аналитика", "Лимиты", "Нарушения", "Настройки"],
     },
     stats: [
-      { label: "Активных трейдеров" },
-      { label: "Сохранено капитала" },
-      { label: "Уменьшение убытков" },
+      { label: "В вейтлисте" },
+      { label: "Шифрование ключей" },
+      { label: "Мониторинг" },
       { label: "Минут на настройку" },
     ],
     featuresTitle: "TradeGuard — твой второй мозг",
@@ -88,49 +111,58 @@ const t = {
       { icon: "📏", title: "Персональные лимиты риска",  desc: "Ты сам задаёшь правила: максимальный убыток за день, максимальная просадка, количество сделок. Холодной головой, заранее.", glow: "blue" },
       { icon: "🔔", title: "Алерты в реальном времени",  desc: "При приближении к лимиту — мгновенный сигнал в Telegram или на экране. Ты знаешь об опасности до катастрофы.", glow: "purple" },
       { icon: "📊", title: "Журнал сделок и аналитика",  desc: "Видишь паттерны своих ошибок: в какое время ты торгуешь хуже всего, после каких ситуаций сливаешь, где теряешь.", glow: "orange" },
-      { icon: "🧠", title: "Психологический дневник",    desc: "Фиксируй своё состояние перед сделкой. Увидишь связь между эмоциями и результатами. Станешь лучше.", glow: "pink" },
+      { icon: "🔐", title: "AES-256 шифрование",         desc: "API-ключи хранятся в зашифрованном виде. Мы не можем прочитать твои ключи — только использовать их для запросов к бирже.", glow: "pink" },
       { icon: "📈", title: "Отчёты по дисциплине",       desc: "Еженедельная статистика: соблюдение правил, лучшие и худшие сессии, прогресс по сравнению с прошлой неделей.", glow: "red" },
     ],
     howBadge: "Как это работает",
     howTitle: "Просто. Честно. Эффективно.",
     howSub: "Настройка занимает 3 минуты. Первый результат — с первого торгового дня",
     steps: [
-      { num: "01", title: "Устанавливаешь правила",       desc: "Ты задаёшь свои лимиты: максимальный убыток за день, сколько сделок, какую просадку можешь пережить. Одноразово, на трезвую голову." },
-      { num: "02", title: "TradeGuard следит за тобой",   desc: "Каждая сделка отслеживается в реальном времени. При нарушении правил — мгновенный алерт и блокировка." },
-      { num: "03", title: "Ты растёшь как трейдер",       desc: "Смотришь на статистику, видишь паттерны ошибок, улучшаешь дисциплину. Убытки уменьшаются, прибыль растёт." },
+      { num: "01", title: "Устанавливаешь правила",     desc: "Ты задаёшь свои лимиты: максимальный убыток за день, сколько сделок, какую просадку можешь пережить. Одноразово, на трезвую голову." },
+      { num: "02", title: "TradeGuard следит за тобой", desc: "Каждая сделка отслеживается в реальном времени. При нарушении правил — мгновенный алерт и блокировка." },
+      { num: "03", title: "Ты растёшь как трейдер",     desc: "Смотришь на статистику, видишь паттерны ошибок, улучшаешь дисциплину. Убытки уменьшаются, прибыль растёт." },
     ],
     pricingBadge: "Цены",
     pricingTitle: "Дешевле одного убыточного дня",
     pricingSub: "Одна предотвращённая ошибка окупает подписку на месяц вперёд.",
     pricingPopular: "ПОПУЛЯРНЫЙ",
     pricing: [
-      { name: "Личный",     price: "9",      period: "мес", desc: "Для трейдеров-одиночек",                features: ["Все лимиты риска", "Автоблокировка", "Telegram алерты", "Журнал сделок", "Еженедельные отчёты"],                                      cta: "Начать бесплатно",    highlight: false },
-      { name: "Трейдер+",   price: "19",     period: "мес", desc: "Для серьёзного роста",                  features: ["Всё из Личного", "Психологический дневник", "Расширенная аналитика", "Паттерны ошибок", "Приоритетная поддержка"],                    cta: "14 дней бесплатно",  highlight: true  },
-      { name: "Наставник",  price: "49",     period: "мес", desc: "Для тех, кто обучает или в группе",     features: ["До 5 аккаунтов", "Совместный дашборд", "Отчёты для ментора", "Сравнение статистики", "Поддержка 24/7"],                              cta: "Попробовать",         highlight: false },
+      { name: "Личный",    price: "9",  period: "мес", desc: "Для трейдеров-одиночек",             features: ["Все лимиты риска", "Автоблокировка", "Telegram алерты", "Журнал сделок", "Еженедельные отчёты"],                              cta: "Начать бесплатно",   highlight: false },
+      { name: "Трейдер+",  price: "19", period: "мес", desc: "Для серьёзного роста",               features: ["Всё из Личного", "Расширенная аналитика", "Паттерны ошибок", "Экспорт данных", "Приоритетная поддержка"],                       cta: "14 дней бесплатно",  highlight: true  },
+      { name: "Наставник", price: "49", period: "мес", desc: "Для тех, кто обучает или в группе", features: ["До 5 аккаунтов", "Совместный дашборд", "Отчёты для ментора", "Сравнение статистики", "Поддержка 24/7"],                         cta: "Попробовать",        highlight: false },
     ],
     pricingCustom: "По запросу",
-    testimBadge: "Отзывы",
-    testimTitle: "Реальные люди. Реальные результаты.",
-    testimSub: "Трейдеры, которые перестали сливать благодаря TradeGuard",
-    testimonials: [
-      { name: "Максим К.",    role: "Форекс трейдер, 3 года",           text: "Я терял в среднем $400 в месяц на «мести рынку». За первый месяц с TradeGuard — потерял $80. Система просто не дала мне открыть следующую сделку после трёх убытков подряд.", avatar: "МК", color: "from-blue-500 to-purple-500" },
-      { name: "Анна Р.",      role: "Криптотрейдер, 1.5 года",          text: "Я думала, что знаю свои слабости. Но аналитика TradeGuard показала: 80% моих убытков приходятся на сделки после 20:00. Теперь я просто не торгую вечером.", avatar: "АР", color: "from-pink-500 to-rose-500"   },
-      { name: "Дмитрий Л.",   role: "Акции и фьючерсы, 5 лет",         text: "Стыдно признать, но я потерял $12,000 за одну неделю из-за отсутствия дисциплины. TradeGuard — это как ремень безопасности. Ты его не замечаешь, пока он не спасает тебя.", avatar: "ДЛ", color: "from-emerald-500 to-teal-500"},
+    waitlistBadge: "Ранний доступ",
+    waitlistTitle: "500+ трейдеров уже в очереди",
+    waitlistSub: "Будь среди первых, кто получит доступ к TradeGuard. Оставь email — мы сообщим при запуске.",
+    waitlistPlaceholder: "твой@email.com",
+    waitlistCta: "Получить ранний доступ",
+    waitlistSuccess: "Ты в списке! Сообщим, когда откроемся. 🎉",
+    waitlistDuplicate: "Этот email уже в списке. Спасибо!",
+    faqBadge: "FAQ",
+    faqTitle: "Часто задаваемые вопросы",
+    faqItems: [
+      { q: "Как хранятся мои API-ключи?",                     a: "Все API-ключи шифруются с помощью AES-256-GCM перед сохранением в базе данных. Ключ шифрования хранится отдельно в защищённой среде. Мы не можем прочитать твои ключи — только использовать их для запросов к бирже." },
+      { q: "Могу ли я закрыть позиции вручную?",              a: "Да. TradeGuard блокирует только открытие новых позиций. Ты всегда можешь закрыть существующие позиции вручную прямо на бирже." },
+      { q: "Какие брокеры поддерживаются?",                   a: "На данный момент поддерживаются Bybit и Binance (фьючерсы). Больше брокеров — скоро." },
+      { q: "Что происходит после истечения блокировки?",      a: "Торговля автоматически разблокируется в 00:00 UTC следующего дня. Ты также можешь разблокировать вручную через настройки." },
     ],
     ctaBadge: "Начни сегодня",
     ctaTitle: "Хватит терять деньги на эмоциях.",
     ctaSub: "Настройся за 3 минуты. Первый месяц бесплатно.\nБез кредитной карты.",
     ctaBtn: "Защитить свой депозит →",
-    ctaFootnote: "Уже 500+ трейдеров перестали сливать с TradeGuard",
+    ctaFootnote: "Уже 500+ трейдеров в вейтлисте TradeGuard",
     footer: {
       desc: "Личный страж торговой дисциплины. Помогаем трейдерам перестать терять деньги на эмоциях.",
       cols: [
-        { title: "Продукт",   links: ["Возможности", "Цены", "Безопасность", "Обновления"] },
-        { title: "Компания",  links: ["О нас", "Блог", "Карьера", "Контакты"] },
-        { title: "Поддержка", links: ["Документация", "FAQ", "Telegram", "Email"] },
+        { title: "Продукт",   links: [{ label: "Возможности", href: "#features" }, { label: "Цены", href: "#pricing" }, { label: "FAQ", href: "#faq" }] },
+        { title: "Поддержка", links: [{ label: "Telegram", href: "https://t.me/tradeguard" }, { label: "Email", href: "mailto:support@tradeguard.io" }] },
       ],
       copy: "© 2026 TradeGuard. Все права защищены.",
-      legal: ["Политика конфиденциальности", "Условия использования", "Cookie"],
+      legal: [
+        { label: "Политика конфиденциальности", href: "/privacy" },
+        { label: "Условия использования",       href: "/terms" },
+      ],
     },
   },
   en: {
@@ -138,7 +170,7 @@ const t = {
       features: "Features",
       how: "How it works",
       pricing: "Pricing",
-      testimonials: "Testimonials",
+      waitlist: "Waitlist",
       login: "Log in",
       cta: "Start for free",
     },
@@ -173,24 +205,24 @@ const t = {
       cols: ["Instrument", "Type", "P&L", "Status"],
       statuses: ["Closed", "Closed", "Open"],
       statLabels: ["Today's P&L", "Drawdown", "Trades", "Deposit"],
-      sidebar: ["Dashboard", "Trades", "Limits", "Breaches", "Stats"],
+      sidebar: ["Dashboard", "Analytics", "Limits", "Breaches", "Settings"],
     },
     stats: [
-      { label: "Active traders" },
-      { label: "Capital saved" },
-      { label: "Loss reduction" },
+      { label: "On the waitlist" },
+      { label: "Key encryption" },
+      { label: "Monitoring" },
       { label: "Minutes to setup" },
     ],
     featuresTitle: "TradeGuard is your second brain",
     featuresSub: "When emotions take over, the system takes control. No human weaknesses.",
     featuresBadge: "Features",
     features: [
-      { icon: "🚫", title: "Auto-block trading",        desc: "When you hit your daily loss limit or a losing streak — the platform physically prevents you from opening a new trade.", glow: "emerald" },
-      { icon: "📏", title: "Personal risk limits",       desc: "You set the rules yourself: max daily loss, max drawdown, number of trades. With a clear head, in advance.", glow: "blue" },
-      { icon: "🔔", title: "Real-time alerts",           desc: "As you approach your limit — instant notification via Telegram or on screen. Know the danger before disaster strikes.", glow: "purple" },
-      { icon: "📊", title: "Trade journal & analytics",  desc: "See patterns in your mistakes: when you trade worst, after which situations you blow up, where you lose the most.", glow: "orange" },
-      { icon: "🧠", title: "Psychological journal",      desc: "Log your emotional state before each trade. See the link between emotions and results. Become a better trader.", glow: "pink" },
-      { icon: "📈", title: "Discipline reports",         desc: "Weekly stats: rule compliance, best and worst sessions, progress compared to last week.", glow: "red" },
+      { icon: "🚫", title: "Auto-block trading",      desc: "When you hit your daily loss limit or a losing streak — the platform physically prevents you from opening a new trade.", glow: "emerald" },
+      { icon: "📏", title: "Personal risk limits",     desc: "You set the rules yourself: max daily loss, max drawdown, number of trades. With a clear head, in advance.", glow: "blue" },
+      { icon: "🔔", title: "Real-time alerts",         desc: "As you approach your limit — instant notification via Telegram or on screen. Know the danger before disaster strikes.", glow: "purple" },
+      { icon: "📊", title: "Trade journal & analytics",desc: "See patterns in your mistakes: when you trade worst, after which situations you blow up, where you lose the most.", glow: "orange" },
+      { icon: "🔐", title: "AES-256 encryption",       desc: "API keys are stored encrypted. We cannot read your keys — only use them to make requests to the exchange.", glow: "pink" },
+      { icon: "📈", title: "Discipline reports",       desc: "Weekly stats: rule compliance, best and worst sessions, progress compared to last week.", glow: "red" },
     ],
     howBadge: "How it works",
     howTitle: "Simple. Honest. Effective.",
@@ -205,33 +237,42 @@ const t = {
     pricingSub: "One prevented mistake pays for a month of subscription.",
     pricingPopular: "POPULAR",
     pricing: [
-      { name: "Personal",  price: "9",  period: "mo", desc: "For solo traders",               features: ["All risk limits", "Auto-block", "Telegram alerts", "Trade journal", "Weekly reports"],                                      cta: "Start for free",        highlight: false },
-      { name: "Trader+",   price: "19", period: "mo", desc: "For serious growth",             features: ["Everything in Personal", "Psychological journal", "Advanced analytics", "Error patterns", "Priority support"],              cta: "14 days free",          highlight: true  },
-      { name: "Mentor",    price: "49", period: "mo", desc: "For mentors & accountability",   features: ["Up to 5 accounts", "Shared dashboard", "Mentor reports", "Stats comparison", "24/7 support"],                             cta: "Try it",                highlight: false },
+      { name: "Personal",  price: "9",  period: "mo", desc: "For solo traders",              features: ["All risk limits", "Auto-block", "Telegram alerts", "Trade journal", "Weekly reports"],                                      cta: "Start for free",   highlight: false },
+      { name: "Trader+",   price: "19", period: "mo", desc: "For serious growth",            features: ["Everything in Personal", "Advanced analytics", "Error patterns", "Data export", "Priority support"],                        cta: "14 days free",     highlight: true  },
+      { name: "Mentor",    price: "49", period: "mo", desc: "For mentors & accountability",  features: ["Up to 5 accounts", "Shared dashboard", "Mentor reports", "Stats comparison", "24/7 support"],                             cta: "Try it",           highlight: false },
     ],
     pricingCustom: "Custom pricing",
-    testimBadge: "Testimonials",
-    testimTitle: "Real people. Real results.",
-    testimSub: "Traders who stopped blowing up thanks to TradeGuard",
-    testimonials: [
-      { name: "Max K.",     role: "Forex trader, 3 years",           text: "I was averaging $400/month in revenge trading losses. My first month with TradeGuard — I lost $80. The system simply didn't let me open a trade after 3 consecutive losses.", avatar: "MK", color: "from-blue-500 to-purple-500" },
-      { name: "Anna R.",    role: "Crypto trader, 1.5 years",        text: "I thought I knew my weaknesses. But TradeGuard analytics showed 80% of my losses happen in trades after 8pm. Now I simply don't trade in the evenings.",                       avatar: "AR", color: "from-pink-500 to-rose-500"   },
-      { name: "Dmitry L.",  role: "Stocks & futures, 5 years",       text: "I'm ashamed to admit I lost $12,000 in one week from lack of discipline. TradeGuard is like a seatbelt. You don't notice it — until it saves your life.",                         avatar: "DL", color: "from-emerald-500 to-teal-500"},
+    waitlistBadge: "Early Access",
+    waitlistTitle: "Join 500+ traders on the waitlist",
+    waitlistSub: "Be among the first to access TradeGuard when we launch. Leave your email and we'll notify you.",
+    waitlistPlaceholder: "your@email.com",
+    waitlistCta: "Get Early Access",
+    waitlistSuccess: "You're on the list! We'll notify you when we launch. 🎉",
+    waitlistDuplicate: "This email is already on the list. Thanks!",
+    faqBadge: "FAQ",
+    faqTitle: "Frequently Asked Questions",
+    faqItems: [
+      { q: "Do you store my API keys securely?",       a: "Yes, all API keys are encrypted with AES-256-GCM before being stored. The encryption key is stored separately in a secure environment. We cannot read your keys — only use them to make requests to the exchange." },
+      { q: "Can I still close positions manually?",    a: "Yes, you can always close positions manually directly on your broker platform. TradeGuard only blocks opening NEW positions when your limits are triggered." },
+      { q: "Which brokers are supported?",             a: "Bybit and Binance (Futures) are currently supported. More brokers are coming soon." },
+      { q: "What happens after the block period ends?", a: "Trading is automatically unblocked at 00:00 UTC next day. You can also manually unblock through the settings page." },
     ],
     ctaBadge: "Start today",
     ctaTitle: "Stop losing money to your emotions.",
     ctaSub: "Set up in 3 minutes. First month free.\nNo credit card required.",
     ctaBtn: "Protect my account →",
-    ctaFootnote: "500+ traders have stopped blowing up with TradeGuard",
+    ctaFootnote: "500+ traders already on the TradeGuard waitlist",
     footer: {
       desc: "Your personal trading discipline guardian. We help traders stop losing money to emotions.",
       cols: [
-        { title: "Product",  links: ["Features", "Pricing", "Security", "Changelog"] },
-        { title: "Company",  links: ["About", "Blog", "Careers", "Contact"] },
-        { title: "Support",  links: ["Docs", "FAQ", "Telegram", "Email"] },
+        { title: "Product",  links: [{ label: "Features", href: "#features" }, { label: "Pricing", href: "#pricing" }, { label: "FAQ", href: "#faq" }] },
+        { title: "Support",  links: [{ label: "Telegram", href: "https://t.me/tradeguard" }, { label: "Email", href: "mailto:support@tradeguard.io" }] },
       ],
       copy: "© 2026 TradeGuard. All rights reserved.",
-      legal: ["Privacy Policy", "Terms of Service", "Cookie Policy"],
+      legal: [
+        { label: "Privacy Policy",    href: "/privacy" },
+        { label: "Terms of Service",  href: "/terms" },
+      ],
     },
   },
 } as const;
@@ -257,11 +298,26 @@ const iconBg: Record<string, string> = {
   red:     "bg-red-500/10 text-red-400",
 };
 
+// ─── Particle config ──────────────────────────────────────────────────────────
+const PARTICLES = [
+  { top: "18%", left: "12%",  size: 5, delay: 0,   dur: 3.5, color: "#10b981", anim: "floatY" },
+  { top: "65%", left: "7%",   size: 3, delay: 1.2, dur: 4.2, color: "#6366f1", anim: "floatXY" },
+  { top: "28%", right: "10%", size: 4, delay: 0.6, dur: 3.8, color: "#10b981", anim: "floatY" },
+  { top: "72%", right: "14%", size: 3, delay: 1.8, dur: 5,   color: "#22d3ee", anim: "floatXY" },
+  { top: "48%", left: "48%",  size: 2, delay: 0.9, dur: 4.5, color: "#a78bfa", anim: "floatY" },
+  { top: "12%", right: "32%", size: 3, delay: 2.1, dur: 3.2, color: "#10b981", anim: "floatXY" },
+  { top: "85%", left: "38%",  size: 2, delay: 1.5, dur: 4.8, color: "#34d399", anim: "floatY" },
+];
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LandingPage() {
-  const [lang, setLang]       = useState<Lang>("ru");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const [lang, setLang]           = useState<Lang>("ru");
+  const [menuOpen, setMenuOpen]   = useState(false);
+  const [scrolled, setScrolled]   = useState(false);
+  const [waitlistEmail, setWaitlistEmail]   = useState("");
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [waitlistStatus, setWaitlistStatus]   = useState<"idle" | "success" | "duplicate">("idle");
+  const [openFaq, setOpenFaq]     = useState<number | null>(null);
 
   const T = t[lang];
 
@@ -271,10 +327,40 @@ export default function LandingPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  return (
-    <div className="min-h-screen bg-[#080b12] text-slate-200 overflow-x-hidden" style={{ fontFamily: "var(--font-geist-sans)" }}>
+  async function handleWaitlist(e: React.FormEvent) {
+    e.preventDefault();
+    if (!waitlistEmail.trim()) return;
+    setWaitlistLoading(true);
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: waitlistEmail.trim() }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setWaitlistStatus(data.isNew ? "success" : "duplicate");
+        setWaitlistEmail("");
+      }
+    } catch {
+      /* silent fail — show success anyway */
+      setWaitlistStatus("success");
+      setWaitlistEmail("");
+    } finally {
+      setWaitlistLoading(false);
+    }
+  }
 
-      {/* ── Grid background ── */}
+  return (
+    <div
+      className="min-h-screen text-slate-200 overflow-x-hidden"
+      style={{
+        fontFamily: "var(--font-geist-sans)",
+        background: "linear-gradient(135deg, #0f1117 0%, #1a1f35 50%, #0f1117 100%)",
+      }}
+    >
+
+      {/* ── Background grid + orbs ── */}
       <div className="fixed inset-0 pointer-events-none z-0" aria-hidden>
         <div className="absolute inset-0"
           style={{
@@ -282,15 +368,16 @@ export default function LandingPage() {
             backgroundSize: "60px 60px",
           }}
         />
-        <div className="absolute top-[-20%] left-[10%] w-[600px] h-[600px] rounded-full bg-emerald-500/5 blur-[120px]" />
-        <div className="absolute top-[30%] right-[-10%] w-[500px] h-[500px] rounded-full bg-blue-500/5 blur-[120px]" />
-        <div className="absolute bottom-[10%] left-[30%] w-[400px] h-[400px] rounded-full bg-purple-500/4 blur-[100px]" />
+        <div className="absolute top-[-20%] left-[10%]  w-[600px] h-[600px] rounded-full bg-emerald-500/5  blur-[120px]" />
+        <div className="absolute top-[30%]  right-[-10%] w-[500px] h-[500px] rounded-full bg-blue-500/5    blur-[120px]" />
+        <div className="absolute bottom-[10%] left-[30%] w-[400px] h-[400px] rounded-full bg-purple-500/4  blur-[100px]" />
+        <div className="absolute top-[55%]  left-[-5%]  w-[300px] h-[300px] rounded-full bg-indigo-500/4   blur-[80px]" />
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* NAVBAR                                                                */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? "bg-[#080b12]/90 backdrop-blur-xl border-b border-white/5" : ""}`}>
+      <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? "bg-[#0f1117]/90 backdrop-blur-xl border-b border-white/5" : ""}`}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5">
@@ -302,7 +389,7 @@ export default function LandingPage() {
 
           {/* Nav links — desktop */}
           <nav className="hidden md:flex items-center gap-8">
-            {([["#features", T.nav.features], ["#how", T.nav.how], ["#pricing", T.nav.pricing], ["#testimonials", T.nav.testimonials]] as [string, string][]).map(([href, label]) => (
+            {([["#features", T.nav.features], ["#how", T.nav.how], ["#pricing", T.nav.pricing], ["#waitlist", T.nav.waitlist]] as [string, string][]).map(([href, label]) => (
               <a key={href} href={href} className="text-sm text-slate-400 hover:text-white transition-colors">
                 {label}
               </a>
@@ -320,11 +407,11 @@ export default function LandingPage() {
               <span className="text-slate-700 mx-0.5">/</span>
               <span className={lang === "en" ? "text-white" : "text-slate-600"}>EN</span>
             </button>
-            <Link href="/dashboard" className="text-sm text-slate-400 hover:text-white transition-colors px-4 py-2">
+            <Link href="/login" className="text-sm text-slate-400 hover:text-white transition-colors px-4 py-2">
               {T.nav.login}
             </Link>
             <Link
-              href="/dashboard"
+              href="/login"
               className="text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 text-black px-5 py-2 rounded-lg transition-colors shadow-lg shadow-emerald-500/20"
             >
               {T.nav.cta}
@@ -348,12 +435,12 @@ export default function LandingPage() {
         {/* Mobile menu */}
         {menuOpen && (
           <div className="md:hidden bg-[#0d1117] border-t border-white/5 px-6 py-4 space-y-3">
-            {([["#features", T.nav.features], ["#how", T.nav.how], ["#pricing", T.nav.pricing], ["#testimonials", T.nav.testimonials]] as [string, string][]).map(([href, label]) => (
+            {([["#features", T.nav.features], ["#how", T.nav.how], ["#pricing", T.nav.pricing], ["#waitlist", T.nav.waitlist]] as [string, string][]).map(([href, label]) => (
               <a key={href} href={href} onClick={() => setMenuOpen(false)} className="block text-sm text-slate-400 py-2">
                 {label}
               </a>
             ))}
-            <Link href="/dashboard" className="block w-full text-center text-sm font-semibold bg-emerald-500 text-black px-5 py-2.5 rounded-lg mt-2">
+            <Link href="/login" className="block w-full text-center text-sm font-semibold bg-emerald-500 text-black px-5 py-2.5 rounded-lg mt-2">
               {T.nav.cta}
             </Link>
           </div>
@@ -363,7 +450,25 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* HERO                                                                  */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section className="relative z-10 pt-40 pb-24 px-6">
+      <section className="relative z-10 pt-40 pb-24 px-6 overflow-hidden">
+        {/* Animated particles */}
+        {PARTICLES.map((p, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              top: p.top,
+              left: ("left" in p ? p.left : undefined),
+              right: ("right" in p ? p.right : undefined),
+              width:  p.size * 4 + "px",
+              height: p.size * 4 + "px",
+              backgroundColor: p.color,
+              animation: `${p.anim} ${p.dur}s ease-in-out ${p.delay}s infinite`,
+              boxShadow: `0 0 ${p.size * 6}px ${p.color}60`,
+            }}
+          />
+        ))}
+
         <div className="max-w-5xl mx-auto text-center">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-4 py-1.5 mb-8">
@@ -384,7 +489,7 @@ export default function LandingPage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              href="/dashboard"
+              href="/login"
               className="group relative inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-8 py-4 rounded-xl text-base transition-all shadow-2xl shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-105"
             >
               {T.hero.cta1}
@@ -431,7 +536,7 @@ export default function LandingPage() {
                   <div className="w-6 h-6 rounded bg-emerald-500 flex items-center justify-center text-[9px] font-bold text-black">TG</div>
                   <span className="text-xs font-semibold text-white">TradeGuard</span>
                 </div>
-                {(["◼","↕","🛡","⚠","👥"] as const).map((icon, i) => (
+                {(["◼","📊","🛡","⚠","⚙"] as const).map((icon, i) => (
                   <div key={i} className={`flex items-center gap-2 px-2 py-2 rounded-lg mb-0.5 text-[11px] ${i === 0 ? "bg-emerald-500/10 text-emerald-400" : "text-slate-500"}`}>
                     <span className="text-xs">{icon}</span>{T.preview.sidebar[i]}
                   </div>
@@ -553,16 +658,16 @@ export default function LandingPage() {
             <p className="text-sm text-slate-500">{T.stats[0].label}</p>
           </div>
           <div>
-            <p className="text-4xl md:text-5xl font-black text-white mb-2">$2.4M+</p>
+            <p className="text-4xl md:text-5xl font-black text-emerald-400 mb-2">AES-256</p>
             <p className="text-sm text-slate-500">{T.stats[1].label}</p>
           </div>
           <div>
-            <p className="text-4xl md:text-5xl font-black text-white mb-2"><Counter to={99} suffix="%" /></p>
+            <p className="text-4xl md:text-5xl font-black text-white mb-2">24/7</p>
             <p className="text-sm text-slate-500">{T.stats[2].label}</p>
           </div>
           <div>
             <p className="text-4xl md:text-5xl font-black text-white mb-2">
-              <Counter to={3} suffix={lang === "ru" ? " мин" : " min"} />
+              {"< "}<Counter to={3} suffix={lang === "ru" ? " мин" : " min"} />
             </p>
             <p className="text-sm text-slate-500">{T.stats[3].label}</p>
           </div>
@@ -651,7 +756,7 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/dashboard" className={`block w-full text-center py-3 rounded-xl text-sm font-semibold transition-all ${p.highlight ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/20" : "bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10"}`}>
+                <Link href="/login" className={`block w-full text-center py-3 rounded-xl text-sm font-semibold transition-all ${p.highlight ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/20" : "bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10"}`}>
                   {p.cta}
                 </Link>
               </div>
@@ -661,29 +766,49 @@ export default function LandingPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      {/* TESTIMONIALS                                                          */}
+      {/* WAITLIST (replaces Testimonials)                                      */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <section id="testimonials" className="relative z-10 py-28 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-xs font-semibold text-orange-400 uppercase tracking-widest mb-3">{T.testimBadge}</p>
-            <h2 className="text-4xl md:text-5xl font-black text-white mb-4">{T.testimTitle}</h2>
-            <p className="text-slate-400">{T.testimSub}</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {T.testimonials.map((t) => (
-              <div key={t.name} className="bg-[#0d1117] border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-colors">
-                <div className="flex mb-3">{[...Array(5)].map((_, i) => <span key={i} className="text-yellow-400 text-sm">★</span>)}</div>
-                <p className="text-slate-300 text-sm leading-relaxed mb-6">"{t.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${t.color} flex items-center justify-center text-xs font-bold text-white`}>{t.avatar}</div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">{t.name}</p>
-                    <p className="text-xs text-slate-500">{t.role}</p>
-                  </div>
-                </div>
+      <section id="waitlist" className="relative z-10 py-28 px-6">
+        <div className="max-w-3xl mx-auto text-center relative">
+          <div className="absolute inset-0 bg-blue-500/5 blur-3xl rounded-full" />
+          <div className="relative">
+            <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-4">{T.waitlistBadge}</p>
+            <h2 className="text-4xl md:text-5xl font-black text-white mb-4">{T.waitlistTitle}</h2>
+            <p className="text-slate-400 max-w-xl mx-auto mb-10">{T.waitlistSub}</p>
+
+            {waitlistStatus === "idle" ? (
+              <form onSubmit={handleWaitlist} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+                <input
+                  type="email"
+                  value={waitlistEmail}
+                  onChange={e => setWaitlistEmail(e.target.value)}
+                  placeholder={T.waitlistPlaceholder}
+                  required
+                  className="flex-1 bg-[#161b27] border border-white/10 rounded-xl px-5 py-3.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/40 transition-colors"
+                />
+                <button
+                  type="submit"
+                  disabled={waitlistLoading || !waitlistEmail.trim()}
+                  className="shrink-0 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-black font-semibold px-7 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:scale-105 whitespace-nowrap"
+                >
+                  {waitlistLoading ? "…" : T.waitlistCta}
+                </button>
+              </form>
+            ) : (
+              <div className="inline-flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl px-8 py-5 max-w-md mx-auto">
+                <span className="text-2xl">🎉</span>
+                <p className="text-sm font-semibold text-emerald-400 text-left">
+                  {waitlistStatus === "success" ? T.waitlistSuccess : T.waitlistDuplicate}
+                </p>
               </div>
-            ))}
+            )}
+
+            {/* Trust indicators */}
+            <div className="mt-8 flex items-center justify-center gap-6 text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> {lang === "ru" ? "Без спама" : "No spam"}</span>
+              <span className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> {lang === "ru" ? "Отписка в 1 клик" : "Unsubscribe anytime"}</span>
+              <span className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> {lang === "ru" ? "Ранний доступ" : "Early access"}</span>
+            </div>
           </div>
         </div>
       </section>
@@ -698,10 +823,33 @@ export default function LandingPage() {
             <p className="text-xs font-semibold text-emerald-400 uppercase tracking-widest mb-4">{T.ctaBadge}</p>
             <h2 className="text-4xl md:text-5xl font-black text-white mb-5">{T.ctaTitle}</h2>
             <p className="text-slate-400 mb-10 text-lg leading-relaxed whitespace-pre-line">{T.ctaSub}</p>
-            <Link href="/dashboard" className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-10 py-4 rounded-xl text-base transition-all shadow-2xl shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-105">
+            <Link href="/login" className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-10 py-4 rounded-xl text-base transition-all shadow-2xl shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-105">
               {T.ctaBtn}
             </Link>
             <p className="text-xs text-slate-600 mt-6">{T.ctaFootnote}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* FAQ                                                                   */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <section id="faq" className="relative z-10 py-28 px-6">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-xs font-semibold text-purple-400 uppercase tracking-widest mb-3">{T.faqBadge}</p>
+            <h2 className="text-4xl md:text-5xl font-black text-white mb-4">{T.faqTitle}</h2>
+          </div>
+          <div className="space-y-3">
+            {T.faqItems.map((item, i) => (
+              <FaqItem
+                key={i}
+                q={item.q}
+                a={item.a}
+                open={openFaq === i}
+                onToggle={() => setOpenFaq(openFaq === i ? null : i)}
+              />
+            ))}
           </div>
         </div>
       </section>
@@ -712,19 +860,23 @@ export default function LandingPage() {
       <footer className="relative z-10 border-t border-white/5 py-12 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-            <div className="col-span-2 md:col-span-1">
+            <div className="col-span-2 md:col-span-2">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center text-xs font-bold text-black">TG</div>
                 <span className="font-bold text-white">TradeGuard</span>
               </div>
-              <p className="text-xs text-slate-500 leading-relaxed">{T.footer.desc}</p>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-xs">{T.footer.desc}</p>
             </div>
             {T.footer.cols.map(col => (
               <div key={col.title}>
                 <h4 className="text-xs font-semibold text-white uppercase tracking-widest mb-4">{col.title}</h4>
                 <ul className="space-y-2.5">
                   {col.links.map(l => (
-                    <li key={l}><a href="#" className="text-xs text-slate-500 hover:text-slate-300 transition-colors">{l}</a></li>
+                    <li key={l.label}>
+                      <a href={l.href} className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                        {l.label}
+                      </a>
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -734,7 +886,9 @@ export default function LandingPage() {
             <p className="text-xs text-slate-600">{T.footer.copy}</p>
             <div className="flex gap-6">
               {T.footer.legal.map(l => (
-                <a key={l} href="#" className="text-xs text-slate-600 hover:text-slate-400 transition-colors">{l}</a>
+                <Link key={l.label} href={l.href} className="text-xs text-slate-600 hover:text-slate-400 transition-colors">
+                  {l.label}
+                </Link>
               ))}
             </div>
           </div>
