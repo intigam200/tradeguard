@@ -1,0 +1,218 @@
+// TradeGuard - SaaS платформа для контроля торговой дисциплины
+// Prisma Schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ========== ENUMS ==========
+
+enum UserRole {
+  ADMIN
+  TRADER
+  MANAGER
+}
+
+enum TradeDirection {
+  LONG
+  SHORT
+}
+
+enum TradeStatus {
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+enum BreachType {
+  DAILY_LOSS_LIMIT
+  WEEKLY_LOSS_LIMIT
+  MONTHLY_LOSS_LIMIT
+  MAX_DRAWDOWN
+  POSITION_SIZE
+  DAILY_TRADE_COUNT
+  CONSECUTIVE_LOSSES
+  RISK_PER_TRADE
+  TRADING_HOURS
+}
+
+enum Broker {
+  BYBIT
+  BINANCE
+  DEMO
+}
+
+enum BreachSeverity {
+  WARNING
+  VIOLATION
+  CRITICAL
+}
+
+// ========== MODELS ==========
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  role          UserRole  @default(TRADER)
+  avatarUrl     String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Уведомления
+  telegramChatId     String?  // Chat ID из Telegram (@userinfobot)
+  notifyEmail        String?  // Email для уведомлений (если null — используется email аккаунта)
+  notifyOnBlock      Boolean  @default(true)
+  notifyOnWarning    Boolean  @default(true)
+  notifyDailySummary Boolean  @default(false)
+
+  // Relations
+  limits             UserLimits?
+  trades             Trade[]
+  breaches           LimitBreach[]
+  connectedAccounts  ConnectedAccount[]
+
+  @@map("users")
+}
+
+model UserLimits {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+
+  dailyLossLimit        Float
+  dailyLossLimitPct     Float?
+
+  maxDrawdown           Float
+  maxDrawdownPct        Float?
+
+  maxPositionSize       Float?
+  maxRiskPerTrade       Float?
+
+  maxDailyTrades        Int?
+  maxConsecutiveLosses  Int?
+
+  weeklyLossLimit       Float?
+  monthlyLossLimit      Float?
+
+  blockDurationHours    Int      @default(24)
+  autoUnblock           Boolean  @default(true)
+
+  tradingStartTime      String?
+  tradingEndTime        String?
+
+  warningThresholdPct   Float    @default(80)
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_limits")
+}
+
+model Trade {
+  id              String         @id @default(cuid())
+  userId          String
+
+  symbol          String
+  direction       TradeDirection
+  status          TradeStatus    @default(OPEN)
+
+  entryPrice      Float
+  exitPrice       Float?
+  stopLoss        Float?
+  takeProfit      Float?
+
+  quantity        Float
+
+  realizedPnl     Float?
+  unrealizedPnl   Float?
+  commission      Float?         @default(0)
+
+  openedAt        DateTime
+  closedAt        DateTime?
+
+  notes           String?
+  tags            String[]
+
+  externalId      String?
+  accountId       String?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  breaches        LimitBreach[]
+
+  @@index([userId, openedAt])
+  @@index([userId, status])
+  @@index([userId, externalId])
+  @@map("trades")
+}
+
+model LimitBreach {
+  id              String         @id @default(cuid())
+  userId          String
+  tradeId         String?
+
+  breachType      BreachType
+  severity        BreachSeverity @default(VIOLATION)
+
+  limitValue      Float
+  actualValue     Float
+  excessAmount    Float
+
+  description     String?
+
+  isWarning       Boolean        @default(false) // true = предупреждение, false = блокировка
+  accountId       String?        // ConnectedAccount.id для cooldown
+
+  isAcknowledged  Boolean        @default(false)
+  acknowledgedAt  DateTime?
+
+  occurredAt      DateTime       @default(now())
+  createdAt       DateTime       @default(now())
+
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trade           Trade?         @relation(fields: [tradeId], references: [id], onDelete: SetNull)
+
+  @@index([userId, occurredAt])
+  @@index([userId, breachType])
+  @@map("limit_breaches")
+}
+
+model ConnectedAccount {
+  id             String    @id @default(cuid())
+  userId         String
+  broker         Broker
+
+  apiKey         String
+  apiSecret      String
+  passphrase     String?
+
+  label          String?
+  isTestnet      Boolean   @default(false)
+
+  isActive       Boolean   @default(true)
+  isBlocked      Boolean   @default(false)
+  blockedAt      DateTime?
+  blockedUntil   DateTime?
+  blockReason    String?
+
+  telegramChatId String?
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isActive, isBlocked])
+  @@map("connected_accounts")
+}
