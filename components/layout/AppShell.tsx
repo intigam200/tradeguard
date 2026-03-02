@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Auto-setup: ensure tg_uid cookie is set on first visit (needed on production)
+  useEffect(() => { fetch("/api/setup").catch(() => {}); }, []);
 
   return (
     <div className="flex min-h-screen bg-[#0f1117] text-slate-200 font-[family-name:var(--font-geist-sans)]">
