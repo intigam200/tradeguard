@@ -24,6 +24,7 @@ export async function GET(): Promise<NextResponse> {
       id: true, email: true, name: true, role: true,
       telegramChatId: true, notifyEmail: true,
       notifyOnBlock: true, notifyOnWarning: true, notifyDailySummary: true,
+      notifyOnUnblock: true, notifyOnNewTrade: true,
     },
   });
 
@@ -37,12 +38,14 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
   if (!userId) return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 });
 
   const body = await req.json() as {
-    name?:              string;
-    telegramChatId?:    string | null;
-    notifyEmail?:       string | null;
-    notifyOnBlock?:     boolean;
-    notifyOnWarning?:   boolean;
+    name?:               string;
+    telegramChatId?:     string | null;
+    notifyEmail?:        string | null;
+    notifyOnBlock?:      boolean;
+    notifyOnWarning?:    boolean;
     notifyDailySummary?: boolean;
+    notifyOnUnblock?:    boolean;
+    notifyOnNewTrade?:   boolean;
   };
 
   const user = await prisma.user.update({
@@ -54,11 +57,14 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
       ...(body.notifyOnBlock      !== undefined && { notifyOnBlock: body.notifyOnBlock }),
       ...(body.notifyOnWarning    !== undefined && { notifyOnWarning: body.notifyOnWarning }),
       ...(body.notifyDailySummary !== undefined && { notifyDailySummary: body.notifyDailySummary }),
+      ...(body.notifyOnUnblock    !== undefined && { notifyOnUnblock: body.notifyOnUnblock }),
+      ...(body.notifyOnNewTrade   !== undefined && { notifyOnNewTrade: body.notifyOnNewTrade }),
     },
     select: {
       id: true, email: true, name: true,
       telegramChatId: true, notifyEmail: true,
       notifyOnBlock: true, notifyOnWarning: true, notifyDailySummary: true,
+      notifyOnUnblock: true, notifyOnNewTrade: true,
     },
   });
 

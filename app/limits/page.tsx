@@ -1,21 +1,22 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Sidebar from "@/components/layout/Sidebar";
+import AppShell from "@/components/layout/AppShell";
 import { PageTransition } from "@/components/ui/animations";
+import { useLang } from "@/context/language";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type LimitConfig = {
-  dailyLoss:       number;
-  maxDrawdown:     number;
-  maxTrades:       number;
-  maxConsecLosses: number;
-  maxPositionSize: number;
-  riskPerTrade:    number;
+  dailyLoss:       string;
+  maxDrawdown:     string;
+  maxTrades:       string;
+  maxConsecLosses: string;
+  maxPositionSize: string;
+  riskPerTrade:    string;
 };
 
 type BlockConfig = {
-  blockDuration: string; // часов или "day"
+  blockDuration: string; // hours as string, "0" = until midnight UTC
   autoUnblock:   boolean;
 };
 
@@ -28,12 +29,12 @@ type Usage = {
 };
 
 const defaultLimits: LimitConfig = {
-  dailyLoss:       2000,
-  maxDrawdown:     8000,
-  maxTrades:       10,
-  maxConsecLosses: 3,
-  maxPositionSize: 2.0,
-  riskPerTrade:    100,
+  dailyLoss:       "2000",
+  maxDrawdown:     "8000",
+  maxTrades:       "10",
+  maxConsecLosses: "3",
+  maxPositionSize: "2.0",
+  riskPerTrade:    "100",
 };
 
 const defaultBlock: BlockConfig = {
@@ -41,30 +42,23 @@ const defaultBlock: BlockConfig = {
   autoUnblock:   true,
 };
 
-const BLOCK_DURATION_OPTIONS = [
-  { value: "1",   label: "1 час" },
-  { value: "2",   label: "2 часа" },
-  { value: "4",   label: "4 часа" },
-  { value: "8",   label: "8 часов" },
-  { value: "24",  label: "24 часа" },
-  { value: "48",  label: "48 часов" },
-  { value: "day", label: "До конца торгового дня" },
-];
-
 function getBarColor(pct: number) {
   if (pct >= 100) return "bg-red-500";
   if (pct >= 70)  return "bg-yellow-400";
   return "bg-emerald-500";
 }
 
-function getStatusBadge(pct: number) {
-  if (pct >= 100) return { text: "Превышен",       cls: "text-red-400 bg-red-500/10 border-red-500/20"          };
-  if (pct >= 70)  return { text: "Предупреждение",  cls: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" };
-  return           { text: "В норме",              cls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
+function getStatusPct(pct: number, lang: string) {
+  if (pct >= 100) return { text: lang === "en" ? "Exceeded" : "Превышен",       cls: "text-red-400 bg-red-500/10 border-red-500/20"            };
+  if (pct >= 70)  return { text: lang === "en" ? "Warning"  : "Предупреждение",  cls: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20"  };
+  return           { text: lang === "en" ? "Normal"   : "В норме",              cls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LimitsPage() {
+  const { lang } = useLang();
+  const t = (en: string, ru: string) => lang === "en" ? en : ru;
+
   const [limits, setLimits]   = useState<LimitConfig>(defaultLimits);
   const [block, setBlock]     = useState<BlockConfig>(defaultBlock);
   const [usage, setUsage]     = useState<Usage | null>(null);
@@ -73,7 +67,17 @@ export default function LimitsPage() {
   const [saving, setSaving]   = useState(false);
   const [saved, setSaved]     = useState(false);
 
-  // ── Загрузка данных ──────────────────────────────────────────────────────────
+  const BLOCK_DURATION_OPTIONS = [
+    { value: "1",  label: t("1 hour",             "1 час")                        },
+    { value: "2",  label: t("2 hours",            "2 часа")                       },
+    { value: "4",  label: t("4 hours",            "4 часа")                       },
+    { value: "8",  label: t("8 hours",            "8 часов")                      },
+    { value: "24", label: t("24 hours",           "24 часа")                      },
+    { value: "48", label: t("48 hours",           "48 часов")                     },
+    { value: "0",  label: t("Until midnight UTC", "До конца торгового дня (UTC)") },
+  ];
+
+  // ── Load data ──────────────────────────────────────────────────────────────
 
   const loadData = useCallback(async () => {
     try {
@@ -102,12 +106,12 @@ export default function LimitsPage() {
       if (limitsJson.ok && limitsJson.limits) {
         const l = limitsJson.limits;
         setLimits({
-          dailyLoss:       l.dailyLossLimit,
-          maxDrawdown:     l.maxDrawdown,
-          maxTrades:       l.maxDailyTrades       ?? 10,
-          maxConsecLosses: l.maxConsecutiveLosses  ?? 3,
-          maxPositionSize: l.maxPositionSize       ?? 2.0,
-          riskPerTrade:    l.maxRiskPerTrade       ?? 100,
+          dailyLoss:       String(l.dailyLossLimit),
+          maxDrawdown:     String(l.maxDrawdown),
+          maxTrades:       String(l.maxDailyTrades       ?? 10),
+          maxConsecLosses: String(l.maxConsecutiveLosses  ?? 3),
+          maxPositionSize: String(l.maxPositionSize       ?? 2.0),
+          riskPerTrade:    String(l.maxRiskPerTrade       ?? 100),
         });
         setBlock({
           blockDuration: String(l.blockDurationHours),
@@ -127,22 +131,23 @@ export default function LimitsPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // ── Сохранение ────────────────────────────────────────────────────────────────
+  // ── Save ───────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
     setSaving(true);
     try {
+      const blockDurationHours = block.blockDuration === "0" ? 0 : (parseInt(block.blockDuration) || 24);
       const res = await fetch("/api/limits", {
         method:  "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          dailyLossLimit:       limits.dailyLoss,
-          maxDrawdown:          limits.maxDrawdown,
-          maxDailyTrades:       limits.maxTrades,
-          maxConsecutiveLosses: limits.maxConsecLosses,
-          maxPositionSize:      limits.maxPositionSize,
-          maxRiskPerTrade:      limits.riskPerTrade,
-          blockDurationHours:   parseInt(block.blockDuration) || 24,
+          dailyLossLimit:       parseFloat(limits.dailyLoss)      || 2000,
+          maxDrawdown:          parseFloat(limits.maxDrawdown)     || 8000,
+          maxDailyTrades:       parseInt(limits.maxTrades)         || 10,
+          maxConsecutiveLosses: parseInt(limits.maxConsecLosses)   || 3,
+          maxPositionSize:      parseFloat(limits.maxPositionSize) || 2.0,
+          maxRiskPerTrade:      parseFloat(limits.riskPerTrade)    || 100,
+          blockDurationHours,
           autoUnblock:          block.autoUnblock,
           warningThresholdPct:  80,
         }),
@@ -159,57 +164,35 @@ export default function LimitsPage() {
     }
   };
 
-  // ── Данные для баров текущего использования ────────────────────────────────
+  // ── Usage bars ─────────────────────────────────────────────────────────────
+
+  const numLimits = {
+    dailyLoss:       parseFloat(limits.dailyLoss)      || 0,
+    maxDrawdown:     parseFloat(limits.maxDrawdown)     || 0,
+    maxTrades:       parseInt(limits.maxTrades)         || 0,
+    maxConsecLosses: parseInt(limits.maxConsecLosses)   || 0,
+    riskPerTrade:    parseFloat(limits.riskPerTrade)    || 0,
+  };
 
   const usageBars = [
-    {
-      label:   "Дневной убыток",
-      icon:    "📉",
-      current: usage ? Math.abs(Math.min(usage.dailyPnl, 0)) : 0,
-      limit:   limits.dailyLoss,
-      format:  (v: number) => "$" + v.toLocaleString("ru-RU", { maximumFractionDigits: 0 }),
-    },
-    {
-      label:   "Максимальная просадка",
-      icon:    "⚠️",
-      current: usage ? Math.abs(Math.min(usage.weeklyPnl, 0)) : 0,
-      limit:   limits.maxDrawdown,
-      format:  (v: number) => "$" + v.toLocaleString("ru-RU", { maximumFractionDigits: 0 }),
-    },
-    {
-      label:   "Количество сделок",
-      icon:    "🔁",
-      current: usage ? usage.dailyTradesCount : 0,
-      limit:   limits.maxTrades,
-      format:  (v: number) => String(v),
-    },
-    {
-      label:   "Подряд убыточных сделок",
-      icon:    "🔴",
-      current: usage ? usage.consecutiveLosses : 0,
-      limit:   limits.maxConsecLosses,
-      format:  (v: number) => String(v),
-    },
-    {
-      label:   "Максимальный риск на сделку ($)",
-      icon:    "🎯",
-      current: 0,
-      limit:   limits.riskPerTrade,
-      format:  (v: number) => "$" + v,
-    },
+    { label: t("Daily Loss", "Дневной убыток"),                                  icon: "📉", current: usage ? Math.abs(Math.min(usage.dailyPnl, 0)) : 0,  limit: numLimits.dailyLoss,       format: (v: number) => "$" + v.toLocaleString("en-US", { maximumFractionDigits: 0 }) },
+    { label: t("Max Drawdown", "Максимальная просадка"),                         icon: "⚠️", current: usage ? Math.abs(Math.min(usage.weeklyPnl, 0)) : 0, limit: numLimits.maxDrawdown,     format: (v: number) => "$" + v.toLocaleString("en-US", { maximumFractionDigits: 0 }) },
+    { label: t("Trade Count", "Количество сделок"),                              icon: "🔁", current: usage ? usage.dailyTradesCount : 0,                 limit: numLimits.maxTrades,       format: (v: number) => String(v) },
+    { label: t("Consecutive Losses", "Подряд убыточных сделок"),                 icon: "🔴", current: usage ? usage.consecutiveLosses : 0,                limit: numLimits.maxConsecLosses, format: (v: number) => String(v) },
+    { label: t("Max Risk per Trade ($)", "Максимальный риск на сделку ($)"),     icon: "🎯", current: 0, limit: numLimits.riskPerTrade, format: (v: number) => "$" + v },
   ];
+
+  const inputCls = "w-full bg-[#0f1117] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 transition-colors";
 
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex min-h-screen bg-[#0f1117] text-slate-200 font-[family-name:var(--font-geist-sans)]">
-      <Sidebar />
-
+    <AppShell>
       <PageTransition>
-        <header className="h-14 border-b border-white/5 px-6 flex items-center justify-between shrink-0">
+        <header className="h-14 border-b border-white/5 px-4 md:px-6 flex items-center justify-between shrink-0">
           <div>
-            <h1 className="text-sm font-semibold text-white">Лимиты и блокировка</h1>
-            <p className="text-xs text-slate-500">Установите правила торговли и условия блокировки</p>
+            <h1 className="text-sm font-semibold text-white">{t("Limits & Blocking", "Лимиты и блокировка")}</h1>
+            <p className="text-xs text-slate-500">{t("Set trading rules and blocking conditions", "Установите правила торговли и условия блокировки")}</p>
           </div>
           <button
             onClick={handleSave}
@@ -222,15 +205,15 @@ export default function LimitsPage() {
                 : "bg-emerald-500 hover:bg-emerald-400 text-black"
             }`}
           >
-            {saved ? "✓ Сохранено" : saving ? "Сохраняю..." : "Сохранить"}
+            {saved ? t("✓ Saved", "✓ Сохранено") : saving ? t("Saving...", "Сохраняю...") : t("Save", "Сохранить")}
           </button>
         </header>
 
-        <main className="flex-1 overflow-auto p-6 space-y-5">
+        <main className="flex-1 overflow-auto p-4 md:p-6 space-y-5">
 
           {/* Tabs */}
           <div className="flex gap-1 bg-[#161b27] border border-white/5 rounded-xl p-1 w-fit">
-            {([["current", "Текущее использование"], ["settings", "Настройка лимитов"]] as const).map(([key, label]) => (
+            {([["current", t("Current Usage", "Текущее использование")], ["settings", t("Limit Settings", "Настройка лимитов")]] as const).map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
@@ -246,11 +229,11 @@ export default function LimitsPage() {
           {tab === "current" && (
             <>
               {/* Overview */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
-                  { label: "Активных лимитов", value: usageBars.length.toString(), icon: "🛡" },
-                  { label: "Превышено",         value: usageBars.filter(u => u.limit > 0 && (u.current / u.limit) >= 1).length.toString(), icon: "🔴", color: "text-red-400" },
-                  { label: "Предупреждений",    value: usageBars.filter(u => { const p = u.limit > 0 ? u.current / u.limit : 0; return p >= 0.7 && p < 1; }).length.toString(), icon: "⚠️", color: "text-yellow-400" },
+                  { label: t("Active Limits", "Активных лимитов"), value: usageBars.length.toString(), icon: "🛡" },
+                  { label: t("Exceeded",       "Превышено"),        value: usageBars.filter(u => u.limit > 0 && (u.current / u.limit) >= 1).length.toString(), icon: "🔴", color: "text-red-400" },
+                  { label: t("Warnings",       "Предупреждений"),   value: usageBars.filter(u => { const p = u.limit > 0 ? u.current / u.limit : 0; return p >= 0.7 && p < 1; }).length.toString(), icon: "⚠️", color: "text-yellow-400" },
                 ].map(s => (
                   <div key={s.label} className="bg-[#161b27] border border-white/5 rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-2"><span>{s.icon}</span><p className="text-xs text-slate-500">{s.label}</p></div>
@@ -261,12 +244,12 @@ export default function LimitsPage() {
 
               {/* Usage bars */}
               {loading ? (
-                <div className="text-center py-10 text-slate-600 text-sm">Загрузка...</div>
+                <div className="text-center py-10 text-slate-600 text-sm">{t("Loading...", "Загрузка...")}</div>
               ) : (
                 <div className="space-y-3">
                   {usageBars.map(u => {
                     const pct    = u.limit > 0 ? Math.min((u.current / u.limit) * 100, 100) : 0;
-                    const status = getStatusBadge(pct);
+                    const status = getStatusPct(pct, lang);
                     return (
                       <div key={u.label} className="bg-[#161b27] border border-white/5 rounded-xl p-5">
                         <div className="flex items-center justify-between mb-3">
@@ -279,7 +262,7 @@ export default function LimitsPage() {
                         <div className="flex items-center gap-4">
                           <div className="flex-1">
                             <div className="flex justify-between text-xs mb-1.5">
-                              <span className="text-slate-500">Использование</span>
+                              <span className="text-slate-500">{t("Usage", "Использование")}</span>
                               <span className="text-slate-300 font-medium">{u.format(u.current)} / {u.format(u.limit)}</span>
                             </div>
                             <div className="h-2 bg-white/5 rounded-full overflow-hidden">
@@ -296,7 +279,11 @@ export default function LimitsPage() {
 
                   {!usage && (
                     <div className="bg-[#161b27] border border-white/5 rounded-xl p-4 text-center">
-                      <p className="text-xs text-slate-500">Нет данных о сделках. <a href="/connect" className="text-emerald-400 hover:underline">Подключите аккаунт</a> и нажмите «Синхронизировать».</p>
+                      <p className="text-xs text-slate-500">
+                        {t("No trade data. ", "Нет данных о сделках. ")}
+                        <a href="/connect" className="text-emerald-400 hover:underline">{t("Connect an account", "Подключите аккаунт")}</a>
+                        {t(" and click Sync.", " и нажмите «Синхронизировать».")}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -305,55 +292,61 @@ export default function LimitsPage() {
           )}
 
           {tab === "settings" && (
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
               {/* ── Limits form ── */}
               <div className="bg-[#161b27] border border-white/5 rounded-xl p-6">
-                <h2 className="text-sm font-semibold text-white mb-1">Лимиты риска</h2>
-                <p className="text-xs text-slate-500 mb-5">Установите на спокойную голову, до начала торгов</p>
+                <h2 className="text-sm font-semibold text-white mb-1">{t("Risk Limits", "Лимиты риска")}</h2>
+                <p className="text-xs text-slate-500 mb-5">{t("Set these calmly, before trading begins", "Установите на спокойную голову, до начала торгов")}</p>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs text-slate-400 mb-1.5 flex items-center gap-1.5"><span>📉</span> Максимальный дневной убыток ($)</label>
+                    <label className="text-xs text-slate-400 mb-1.5 flex items-center gap-1.5"><span>📉</span> {t("Max Daily Loss ($)", "Максимальный дневной убыток ($)")}</label>
                     <input type="number" value={limits.dailyLoss}
-                      onChange={e => setLimits(l => ({ ...l, dailyLoss: +e.target.value }))}
-                      className="w-full bg-[#0f1117] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 transition-colors" />
-                    <p className="text-[10px] text-slate-600 mt-1">Торговля блокируется при достижении этого значения</p>
+                      onChange={e => setLimits(l => ({ ...l, dailyLoss: e.target.value }))}
+                      onFocus={e => e.target.select()}
+                      className={inputCls} />
+                    <p className="text-[10px] text-slate-600 mt-1">{t("Trading is blocked when this value is reached", "Торговля блокируется при достижении этого значения")}</p>
                   </div>
 
                   <div>
-                    <label className="text-xs text-slate-400 mb-1.5 flex items-center gap-1.5"><span>⚠️</span> Максимальная просадка ($)</label>
+                    <label className="text-xs text-slate-400 mb-1.5 flex items-center gap-1.5"><span>⚠️</span> {t("Max Drawdown ($)", "Максимальная просадка ($)")}</label>
                     <input type="number" value={limits.maxDrawdown}
-                      onChange={e => setLimits(l => ({ ...l, maxDrawdown: +e.target.value }))}
-                      className="w-full bg-[#0f1117] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 transition-colors" />
+                      onChange={e => setLimits(l => ({ ...l, maxDrawdown: e.target.value }))}
+                      onFocus={e => e.target.select()}
+                      className={inputCls} />
                   </div>
 
                   <div>
-                    <label className="text-xs text-slate-400 mb-1.5 flex items-center gap-1.5"><span>🔁</span> Максимум сделок в день</label>
+                    <label className="text-xs text-slate-400 mb-1.5 flex items-center gap-1.5"><span>🔁</span> {t("Max Trades per Day", "Максимум сделок в день")}</label>
                     <input type="number" value={limits.maxTrades}
-                      onChange={e => setLimits(l => ({ ...l, maxTrades: +e.target.value }))}
-                      className="w-full bg-[#0f1117] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 transition-colors" />
+                      onChange={e => setLimits(l => ({ ...l, maxTrades: e.target.value }))}
+                      onFocus={e => e.target.select()}
+                      className={inputCls} />
                   </div>
 
                   <div>
-                    <label className="text-xs text-slate-400 mb-1.5 flex items-center gap-1.5"><span>🔴</span> Максимум убыточных сделок подряд</label>
+                    <label className="text-xs text-slate-400 mb-1.5 flex items-center gap-1.5"><span>🔴</span> {t("Max Consecutive Losses", "Максимум убыточных сделок подряд")}</label>
                     <input type="number" min={1} max={10} value={limits.maxConsecLosses}
-                      onChange={e => setLimits(l => ({ ...l, maxConsecLosses: +e.target.value }))}
-                      className="w-full bg-[#0f1117] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 transition-colors" />
+                      onChange={e => setLimits(l => ({ ...l, maxConsecLosses: e.target.value }))}
+                      onFocus={e => e.target.select()}
+                      className={inputCls} />
                   </div>
 
                   <div>
-                    <label className="text-xs text-slate-400 mb-1.5 flex items-center gap-1.5"><span>📊</span> Максимальный размер позиции (lot)</label>
+                    <label className="text-xs text-slate-400 mb-1.5 flex items-center gap-1.5"><span>📊</span> {t("Max Position Size (lot)", "Максимальный размер позиции (lot)")}</label>
                     <input type="number" step={0.1} min={0.01} value={limits.maxPositionSize}
-                      onChange={e => setLimits(l => ({ ...l, maxPositionSize: +e.target.value }))}
-                      className="w-full bg-[#0f1117] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 transition-colors" />
+                      onChange={e => setLimits(l => ({ ...l, maxPositionSize: e.target.value }))}
+                      onFocus={e => e.target.select()}
+                      className={inputCls} />
                   </div>
 
                   <div>
-                    <label className="text-xs text-slate-400 mb-1.5 flex items-center gap-1.5"><span>🎯</span> Максимальный риск на сделку ($)</label>
+                    <label className="text-xs text-slate-400 mb-1.5 flex items-center gap-1.5"><span>🎯</span> {t("Max Risk per Trade ($)", "Максимальный риск на сделку ($)")}</label>
                     <input type="number" value={limits.riskPerTrade}
-                      onChange={e => setLimits(l => ({ ...l, riskPerTrade: +e.target.value }))}
-                      className="w-full bg-[#0f1117] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 transition-colors" />
+                      onChange={e => setLimits(l => ({ ...l, riskPerTrade: e.target.value }))}
+                      onFocus={e => e.target.select()}
+                      className={inputCls} />
                   </div>
                 </div>
               </div>
@@ -361,30 +354,30 @@ export default function LimitsPage() {
               {/* ── Block settings ── */}
               <div className="space-y-4">
                 <div className="bg-[#161b27] border border-white/5 rounded-xl p-6">
-                  <h2 className="text-sm font-semibold text-white mb-1">Условия блокировки</h2>
-                  <p className="text-xs text-slate-500 mb-5">Когда TradeGuard должен заблокировать торговлю</p>
+                  <h2 className="text-sm font-semibold text-white mb-1">{t("Blocking Conditions", "Условия блокировки")}</h2>
+                  <p className="text-xs text-slate-500 mb-5">{t("When TradeGuard should block trading", "Когда TradeGuard должен заблокировать торговлю")}</p>
 
                   <div className="space-y-4">
                     <div className="flex items-center justify-between py-3 border-b border-white/5">
                       <div>
-                        <p className="text-sm text-slate-200">При достижении дневного лимита</p>
-                        <p className="text-xs text-slate-500 mt-0.5">Блокировать при убытке ≥ ${limits.dailyLoss.toLocaleString()}</p>
+                        <p className="text-sm text-slate-200">{t("On daily limit reached", "При достижении дневного лимита")}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{t("Block at loss ≥", "Блокировать при убытке ≥")} ${(parseFloat(limits.dailyLoss) || 0).toLocaleString()}</p>
                       </div>
-                      <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Всегда</span>
+                      <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{t("Always", "Всегда")}</span>
                     </div>
 
                     <div className="flex items-center justify-between py-3 border-b border-white/5">
                       <div>
-                        <p className="text-sm text-slate-200">При серии убыточных сделок</p>
-                        <p className="text-xs text-slate-500 mt-0.5">Блокировать после {limits.maxConsecLosses} убытков подряд</p>
+                        <p className="text-sm text-slate-200">{t("On consecutive loss streak", "При серии убыточных сделок")}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{t("Block after", "Блокировать после")} {limits.maxConsecLosses} {t("consecutive losses", "убытков подряд")}</p>
                       </div>
-                      <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Всегда</span>
+                      <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{t("Always", "Всегда")}</span>
                     </div>
 
                     <div className="flex items-center justify-between py-3">
                       <div>
-                        <p className="text-sm text-slate-200">Автоматическая разблокировка</p>
-                        <p className="text-xs text-slate-500 mt-0.5">Разблокировать автоматически через заданное время</p>
+                        <p className="text-sm text-slate-200">{t("Auto-unblock", "Автоматическая разблокировка")}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{t("Unblock automatically after the set duration", "Разблокировать автоматически через заданное время")}</p>
                       </div>
                       <button
                         onClick={() => setBlock(b => ({ ...b, autoUnblock: !b.autoUnblock }))}
@@ -398,8 +391,8 @@ export default function LimitsPage() {
 
                 {/* Block duration */}
                 <div className="bg-[#161b27] border border-white/5 rounded-xl p-6">
-                  <h2 className="text-sm font-semibold text-white mb-1">Длительность блокировки</h2>
-                  <p className="text-xs text-slate-500 mb-5">На сколько времени блокировать аккаунт при нарушении</p>
+                  <h2 className="text-sm font-semibold text-white mb-1">{t("Block Duration", "Длительность блокировки")}</h2>
+                  <p className="text-xs text-slate-500 mb-5">{t("How long to block the account on violation", "На сколько времени блокировать аккаунт при нарушении")}</p>
 
                   <div className="grid grid-cols-2 gap-2">
                     {BLOCK_DURATION_OPTIONS.map(opt => (
@@ -419,19 +412,23 @@ export default function LimitsPage() {
 
                   <div className="mt-4 bg-red-500/5 border border-red-500/15 rounded-lg p-3">
                     <p className="text-[10px] text-slate-500">
-                      При нарушении лимита аккаунт будет заблокирован на{" "}
+                      {t("On limit breach, the account will be blocked for", "При нарушении лимита аккаунт будет заблокирован на")}{" "}
                       <strong className="text-red-400">{BLOCK_DURATION_OPTIONS.find(o => o.value === block.blockDuration)?.label.toLowerCase()}</strong>.
-                      {block.autoUnblock ? " Разблокируется автоматически." : " Требуется ручная разблокировка."}
+                      {" "}{block.autoUnblock ? t("Auto-unblocks.", "Разблокируется автоматически.") : t("Manual unblock required.", "Требуется ручная разблокировка.")}
                     </p>
                   </div>
                 </div>
 
-                {/* Cooldown note */}
+                {/* Tip */}
                 <div className="bg-[#161b27] border border-white/5 rounded-xl p-4 flex items-start gap-3">
                   <span className="text-lg">💡</span>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    Блокировка выполняется автоматически: отменяются все ордера и закрываются все позиции маркет-ордером.
-                    Нажмите <strong className="text-slate-400">Сохранить</strong>, чтобы лимиты вступили в силу.
+                    {t(
+                      "Blocking is automatic: all orders are cancelled and all positions are closed at market price. Click ",
+                      "Блокировка выполняется автоматически: отменяются все ордера и закрываются все позиции маркет-ордером. Нажмите "
+                    )}
+                    <strong className="text-slate-400">{t("Save", "Сохранить")}</strong>
+                    {t(" for limits to take effect.", ", чтобы лимиты вступили в силу.")}
                   </p>
                 </div>
               </div>
@@ -439,6 +436,6 @@ export default function LimitsPage() {
           )}
         </main>
       </PageTransition>
-    </div>
+    </AppShell>
   );
 }

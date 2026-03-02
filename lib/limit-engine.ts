@@ -171,7 +171,13 @@ export class LimitEngine {
     if (!account) return;
 
     const blockDurationHours = account.user.limits?.blockDurationHours ?? 24;
-    const blockedUntil = new Date(Date.now() + blockDurationHours * 3_600_000);
+    let blockedUntil: Date;
+    if (blockDurationHours <= 0) {
+      const now = new Date();
+      blockedUntil = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+    } else {
+      blockedUntil = new Date(Date.now() + blockDurationHours * 3_600_000);
+    }
 
     console.log(`[LimitEngine] Blocking account ${accountId} until ${blockedUntil.toISOString()}`);
 

@@ -89,6 +89,33 @@ export async function sendDailySummary(
   }
 }
 
+// ─── Разблокировка аккаунта ───────────────────────────────────────────────────
+
+export async function notifyUnblocked(userId: string): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where:  { id: userId },
+    select: { telegramChatId: true, notifyEmail: true, email: true, notifyOnUnblock: true },
+  });
+  if (!user || !user.notifyOnUnblock) return;
+
+  const emailTo = user.notifyEmail ?? user.email;
+
+  if (user.telegramChatId) {
+    await sendTelegramAlert(
+      user.telegramChatId,
+      `✅ <b>TradeGuard — Trading Unblocked</b>\n\nYour block has been lifted. You can now resume trading.\n\nTrade responsibly!`,
+    );
+  }
+
+  if (emailTo) {
+    await sendEmailAlert(
+      emailTo,
+      "TradeGuard — Trading Unblocked",
+      `<p>Your trading block has been lifted. You can now resume trading.</p><p>Trade responsibly!</p>`,
+    );
+  }
+}
+
 // ─── Итоги дня для всех пользователей (вызывается из cron) ──────────────────
 
 export async function sendAllDailySummaries(): Promise<void> {

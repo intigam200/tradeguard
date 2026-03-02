@@ -71,14 +71,41 @@ model User {
   notifyOnBlock      Boolean  @default(true)
   notifyOnWarning    Boolean  @default(true)
   notifyDailySummary Boolean  @default(false)
+  notifyOnUnblock    Boolean  @default(false)
+  notifyOnNewTrade   Boolean  @default(false)
 
   // Relations
   limits             UserLimits?
   trades             Trade[]
   breaches           LimitBreach[]
   connectedAccounts  ConnectedAccount[]
+  supportMessages    SupportMessage[]
+  unblockRequests    UnblockRequest[]
 
   @@map("users")
+}
+
+model SupportMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  role      String   // 'user' | 'support'
+  createdAt DateTime @default(now())
+
+  @@map("support_messages")
+}
+
+model UnblockRequest {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blockReason String
+  status      String    @default("pending") // pending | approved | denied
+  createdAt   DateTime  @default(now())
+  resolvedAt  DateTime?
+
+  @@map("unblock_requests")
 }
 
 model UserLimits {

@@ -82,6 +82,7 @@ export async function GET(): Promise<NextResponse> {
 
     return NextResponse.json({
       ok: true,
+      userId,
       accounts,
       limits,
       hasLimits: limits !== null,
