@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useLang } from "@/context/language";
 
 // ─── Animated counter ─────────────────────────────────────────────────────────
 function Counter({ to, prefix = "", suffix = "", duration = 2000 }: { to: number; prefix?: string; suffix?: string; duration?: number }) {
@@ -277,8 +278,6 @@ const t = {
   },
 } as const;
 
-type Lang = "ru" | "en";
-
 // ─── Style helpers ─────────────────────────────────────────────────────────────
 const glowColors: Record<string, string> = {
   emerald: "shadow-emerald-500/20 border-emerald-500/20 group-hover:border-emerald-500/40",
@@ -311,7 +310,7 @@ const PARTICLES = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LandingPage() {
-  const [lang, setLang]           = useState<Lang>("ru");
+  const { lang, setLang }         = useLang();
   const [menuOpen, setMenuOpen]   = useState(false);
   const [scrolled, setScrolled]   = useState(false);
   const [waitlistEmail, setWaitlistEmail]   = useState("");

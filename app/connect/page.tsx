@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Sidebar from "@/components/layout/Sidebar";
+import AppShell from "@/components/layout/AppShell";
 import { PageTransition } from "@/components/ui/animations";
 import { validators, errorMessages, filters } from "@/lib/validation";
 import { BlockTimer } from "@/components/BlockTimer";
+import { useLang } from "@/context/language";
 
 type BrokerDef = {
   id: string;
@@ -20,7 +21,7 @@ const brokers: BrokerDef[] = [
     id:        "BYBIT",
     name:      "Bybit",
     logo:      "🟠",
-    type:      "Криптобиржа",
+    type:      "Crypto Exchange",
     supported: true,
     fields: [
       { key: "apiKey",    label: "API Key",    placeholder: "Enter API Key"    },
@@ -31,7 +32,7 @@ const brokers: BrokerDef[] = [
     id:        "BINANCE",
     name:      "Binance Futures",
     logo:      "🟡",
-    type:      "Криптобиржа",
+    type:      "Crypto Exchange",
     supported: true,
     fields: [
       { key: "apiKey",    label: "API Key",    placeholder: "Enter API Key"    },
@@ -42,7 +43,7 @@ const brokers: BrokerDef[] = [
     id:        "mt4",
     name:      "MetaTrader 4",
     logo:      "📊",
-    type:      "Форекс / CFD",
+    type:      "Forex / CFD",
     supported: false,
     fields: [],
   },
@@ -50,7 +51,7 @@ const brokers: BrokerDef[] = [
     id:        "mt5",
     name:      "MetaTrader 5",
     logo:      "📈",
-    type:      "Форекс / CFD / Акции",
+    type:      "Forex / CFD / Stocks",
     supported: false,
     fields: [],
   },
@@ -58,7 +59,7 @@ const brokers: BrokerDef[] = [
     id:        "okx",
     name:      "OKX",
     logo:      "⚫",
-    type:      "Криптобиржа",
+    type:      "Crypto Exchange",
     supported: false,
     fields: [],
   },
@@ -77,6 +78,8 @@ type ConnectedAccount = {
 type ConnectionStatus = "idle" | "connecting" | "connected" | "error";
 
 export default function ConnectPage() {
+  const { lang } = useLang();
+  const t = (en: string, ru: string) => lang === "en" ? en : ru;
   const [accounts, setAccounts]     = useState<ConnectedAccount[]>([]);
   const [selected, setSelected]     = useState<BrokerDef | null>(null);
   const [values, setValues]         = useState<Record<string, string>>({});
@@ -220,34 +223,32 @@ export default function ConnectPage() {
   const hasValidationErrors = Object.values(fieldErrors).some(e => e) || !!labelError;
 
   return (
-    <div className="flex min-h-screen bg-[#0f1117] text-slate-200 font-[family-name:var(--font-geist-sans)]">
-      <Sidebar />
-
+    <AppShell>
       <PageTransition>
-        <header className="h-14 border-b border-white/5 px-6 flex items-center justify-between shrink-0">
+        <header className="h-14 border-b border-white/5 px-4 md:px-6 flex items-center justify-between shrink-0">
           <div>
-            <h1 className="text-sm font-semibold text-white">Подключить брокера</h1>
-            <p className="text-xs text-slate-500">Автоматический импорт сделок через API</p>
+            <h1 className="text-sm font-semibold text-white">{t("Connect Broker", "Подключить брокера")}</h1>
+            <p className="text-xs text-slate-500">{t("Automatic trade import via API", "Автоматический импорт сделок через API")}</p>
           </div>
           {hasAccounts && (
             <div className="flex items-center gap-3">
               <span className="flex items-center gap-1.5 text-xs text-emerald-400">
                 <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                {accounts.length} аккаунт{accounts.length === 1 ? "" : "а"} подключено
+                {accounts.length} {t("account(s) connected", `аккаунт${accounts.length === 1 ? "" : "а"} подключено`)}
               </span>
               {!showForm && (
                 <button
                   onClick={() => { setShowForm(true); setStatus("idle"); setErrorMsg(""); }}
                   className="text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-lg transition-colors"
                 >
-                  + Добавить ещё
+                  + {t("Add another", "Добавить ещё")}
                 </button>
               )}
             </div>
           )}
         </header>
 
-        <main className="flex-1 overflow-auto p-6 space-y-6">
+        <main className="flex-1 overflow-auto p-4 md:p-6 space-y-6">
 
           {/* DB error banner */}
           {dbError && (
@@ -255,12 +256,11 @@ export default function ConnectPage() {
               <div className="flex items-start gap-3">
                 <span className="text-lg shrink-0">⚠️</span>
                 <div>
-                  <p className="text-sm font-semibold text-red-400 mb-1">База данных недоступна</p>
+                  <p className="text-sm font-semibold text-red-400 mb-1">{t("Database unavailable", "База данных недоступна")}</p>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Supabase проект скорее всего заморожен. Зайди на{" "}
+                    {t("The Supabase project is likely paused. Go to", "Supabase проект скорее всего заморожен. Зайди на")}{" "}
                     <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-blue-400 underline">supabase.com</a>
-                    {" "}→ выбери проект → нажми <strong className="text-slate-300">Restore project</strong>.
-                    После разморозки выполни <code className="bg-black/30 px-1 rounded text-slate-300">npx prisma db push</code>.
+                    {" → "}{t("select project → click", "выбери проект → нажми")} <strong className="text-slate-300">Restore project</strong>.
                   </p>
                 </div>
               </div>
@@ -269,7 +269,7 @@ export default function ConnectPage() {
                 disabled={retrying}
                 className="shrink-0 text-xs text-slate-400 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
               >
-                {retrying ? "..." : "Повторить"}
+                {retrying ? "..." : t("Retry", "Повторить")}
               </button>
             </div>
           )}
@@ -278,18 +278,20 @@ export default function ConnectPage() {
           <div className="bg-blue-500/5 border border-blue-500/15 rounded-xl p-4 flex items-start gap-3">
             <span className="text-lg shrink-0">🔌</span>
             <div>
-              <p className="text-sm font-semibold text-white mb-1">Как это работает</p>
+              <p className="text-sm font-semibold text-white mb-1">{t("How it works", "Как это работает")}</p>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Подключите ваш торговый счёт через API — и TradeGuard автоматически начнёт мониторинг
-                в реальном времени. При нарушении лимитов система мгновенно закроет все позиции.
+                {t(
+                  "Connect your trading account via API — TradeGuard will start real-time monitoring automatically. On limit breach, all positions will be closed instantly.",
+                  "Подключите ваш торговый счёт через API — и TradeGuard автоматически начнёт мониторинг в реальном времени. При нарушении лимитов система мгновенно закроет все позиции."
+                )}
               </p>
             </div>
           </div>
 
-          {/* Подключённые аккаунты */}
+          {/* Connected accounts */}
           {hasAccounts && (
             <div className="space-y-3">
-              <p className="text-xs text-slate-500 font-medium">Подключённые аккаунты</p>
+              <p className="text-xs text-slate-500 font-medium">{t("Connected accounts", "Подключённые аккаунты")}</p>
               {accounts.map(acc => {
                 const broker = brokers.find(b => b.id === acc.broker);
                 return (
@@ -317,16 +319,16 @@ export default function ConnectPage() {
                         {acc.isBlocked ? (
                           <div>
                             <p className="text-xs text-red-400">
-                              🔒 Заблокирован{acc.blockReason ? `: ${acc.blockReason}` : ""}
+                              🔒 {t("Blocked", "Заблокирован")}{acc.blockReason ? `: ${acc.blockReason}` : ""}
                             </p>
                             {acc.blockedUntil && (
                               <p className="text-xs text-slate-500 mt-0.5">
-                                Разблокировка через: <BlockTimer blockedUntil={acc.blockedUntil} />
+                                {t("Unblocks in:", "Разблокировка через:")} <BlockTimer blockedUntil={acc.blockedUntil} />
                               </p>
                             )}
                           </div>
                         ) : (
-                          <p className="text-xs text-emerald-400">● Активен · Мониторинг запущен</p>
+                          <p className="text-xs text-emerald-400">● {t("Active · Monitoring running", "Активен · Мониторинг запущен")}</p>
                         )}
                       </div>
                     </div>
@@ -335,7 +337,7 @@ export default function ConnectPage() {
                       disabled={disconnecting === acc.id}
                       className="text-xs text-slate-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                     >
-                      {disconnecting === acc.id ? "..." : "Отключить"}
+                      {disconnecting === acc.id ? "..." : t("Disconnect", "Отключить")}
                     </button>
                   </div>
                 );
@@ -343,13 +345,13 @@ export default function ConnectPage() {
             </div>
           )}
 
-          {/* Форма подключения */}
+          {/* Connection form */}
           {(!hasAccounts || showForm) && (
-            <div className="grid grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
               {/* Broker list */}
               <div className="col-span-1 space-y-2">
-                <p className="text-xs text-slate-500 font-medium mb-3">Выберите платформу</p>
+                <p className="text-xs text-slate-500 font-medium mb-3">{t("Select platform", "Выберите платформу")}</p>
                 {brokers.map(b => (
                   <button
                     key={b.id}
@@ -376,7 +378,7 @@ export default function ConnectPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold">{b.name}</p>
                       <p className="text-[10px] text-slate-500">
-                        {b.supported ? b.type : "Скоро"}
+                        {b.supported ? b.type : t("Coming soon", "Скоро")}
                       </p>
                     </div>
                     {b.supported && (
@@ -387,7 +389,7 @@ export default function ConnectPage() {
               </div>
 
               {/* Connection form */}
-              <div className="col-span-2">
+              <div className="md:col-span-2">
                 {selected ? (
                   <div className="bg-[#161b27] border border-white/5 rounded-xl p-6">
                     <div className="flex items-center gap-3 mb-6">
@@ -401,7 +403,7 @@ export default function ConnectPage() {
                     {/* Label field */}
                     <div className="mb-4">
                       <label className="text-xs text-slate-500 mb-1.5 block">
-                        Название (необязательно)
+                        {t("Name (optional)", "Название (необязательно)")}
                       </label>
                       <input
                         type="text"
@@ -495,9 +497,10 @@ export default function ConnectPage() {
                     <div className="bg-white/[0.02] border border-white/5 rounded-lg p-3 mb-5 flex items-start gap-2">
                       <span className="text-sm shrink-0">🔒</span>
                       <p className="text-[10px] text-slate-500 leading-relaxed">
-                        API-ключ проверяется напрямую на бирже перед сохранением.
-                        Для мониторинга нужен доступ к чтению позиций. Для блокировки —
-                        дополнительно разрешение на торговлю (только закрытие позиций).
+                        {t(
+                          "API key is verified directly on the exchange before saving. Read access to positions is required for monitoring. Trade permission (close only) is needed for blocking.",
+                          "API-ключ проверяется напрямую на бирже перед сохранением. Для мониторинга нужен доступ к чтению позиций. Для блокировки — дополнительно разрешение на торговлю (только закрытие позиций)."
+                        )}
                       </p>
                     </div>
 
@@ -507,7 +510,7 @@ export default function ConnectPage() {
                           onClick={() => { setShowForm(false); setSelected(null); setStatus("idle"); setFieldErrors({}); setLabelError(""); }}
                           className="px-4 py-2.5 rounded-xl text-sm text-slate-400 border border-white/10 hover:border-white/20 transition-colors"
                         >
-                          Отмена
+                          {t("Cancel", "Отмена")}
                         </button>
                       )}
                       <button
@@ -525,7 +528,7 @@ export default function ConnectPage() {
                             : "bg-white/5 text-slate-600 cursor-not-allowed"
                         }`}
                       >
-                        {status === "connecting" ? "Проверка ключей..." : "Подключить"}
+                        {status === "connecting" ? t("Verifying keys...", "Проверка ключей...") : t("Connect", "Подключить")}
                       </button>
                     </div>
                   </div>
@@ -533,8 +536,8 @@ export default function ConnectPage() {
                   <div className="bg-[#161b27] border border-white/5 rounded-xl h-full flex items-center justify-center min-h-[300px]">
                     <div className="text-center">
                       <p className="text-3xl mb-3">🔗</p>
-                      <p className="text-sm text-slate-500">Выберите брокера слева</p>
-                      <p className="text-xs text-slate-600 mt-1">Доступны: Bybit, Binance Futures</p>
+                      <p className="text-sm text-slate-500">{t("Select a broker on the left", "Выберите брокера слева")}</p>
+                      <p className="text-xs text-slate-600 mt-1">{t("Available: Bybit, Binance Futures", "Доступны: Bybit, Binance Futures")}</p>
                     </div>
                   </div>
                 )}
@@ -544,6 +547,6 @@ export default function ConnectPage() {
 
         </main>
       </PageTransition>
-    </div>
+    </AppShell>
   );
 }

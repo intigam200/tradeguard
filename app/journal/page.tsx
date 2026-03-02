@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import Sidebar from "@/components/layout/Sidebar";
+import AppShell from "@/components/layout/AppShell";
 import { PageTransition, CardGrid, CardTransition } from "@/components/ui/animations";
 import {
   AreaChart, Area, BarChart, Bar,
@@ -370,8 +370,7 @@ export default function JournalPage() {
   );
 
   return (
-    <div className="flex min-h-screen bg-[#0f1117] text-slate-200 font-[family-name:var(--font-geist-sans)]">
-      <Sidebar />
+    <AppShell>
       <PageTransition>
 
         {/* ── Header ── */}
@@ -766,6 +765,6 @@ export default function JournalPage() {
 
       {/* Trade Detail Modal */}
       {selectedTrade && <TradeModal trade={selectedTrade} onClose={() => setSelectedTrade(null)} />}
-    </div>
+    </AppShell>
   );
 }

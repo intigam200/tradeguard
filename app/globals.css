@@ -29,3 +29,9 @@ body {
   33% { transform: translate(8px, -12px); opacity: 0.6; }
   66% { transform: translate(-6px, -20px); opacity: 0.4; }
 }
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+.slide-in-left { animation: slideInLeft 0.22s ease-out; }

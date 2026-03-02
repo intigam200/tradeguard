@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { LanguageProvider } from "@/context/language";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -9,8 +10,8 @@ const geistSans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "TradeGuard — Торговая дисциплина",
-  description: "SaaS-платформа для контроля торговой дисциплины трейдеров",
+  title: "TradeGuard — Trading Discipline",
+  description: "Personal trading discipline guardian for traders",
 };
 
 export default function RootLayout({
@@ -19,9 +20,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru">
+    <html lang="en">
       <body className={`${geistSans.variable} antialiased bg-[#0f1117] text-slate-200`}>
-        {children}
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
       </body>
     </html>
   );
