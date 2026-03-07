@@ -35,3 +35,8 @@ body {
   to   { transform: translateX(0); }
 }
 .slide-in-left { animation: slideInLeft 0.22s ease-out; }
+
+@keyframes rotateCube {
+  0%   { transform: rotateX(15deg) rotateY(0deg); }
+  100% { transform: rotateX(15deg) rotateY(360deg); }
+}

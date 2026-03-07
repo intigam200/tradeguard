@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
+import { AppHeader } from "./AppHeader";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -31,7 +32,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile top bar */}
+        {/* Mobile top bar (hamburger only) */}
         <div className="md:hidden flex items-center h-12 px-4 border-b border-white/5 bg-[#0f1117] sticky top-0 z-30 shrink-0 gap-3">
           <button
             onClick={() => setMobileOpen(true)}
@@ -47,6 +48,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <span className="font-semibold text-white text-sm">TradeGuard</span>
           </div>
         </div>
+
+        {/* Global header — visible on every page */}
+        <AppHeader />
 
         {children}
       </div>

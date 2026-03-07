@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies }       from "next/headers";
 import { prisma }        from "@/lib/prisma";
-import { syncAccount, syncAllAccounts } from "@/lib/sync";
+import { syncAccount, syncAllAccounts, checkLimitsFromDb } from "@/lib/sync";
 import { monitor }       from "@/lib/monitor";
 
 async function getUserId(): Promise<string | null> {
@@ -55,9 +55,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // Запустить проверку лимитов для всех синхронизированных аккаунтов
+  // Проверка лимитов: DB-based (надёжная) + WebSocket-based (если мониторинг активен)
   for (const r of results) {
     if (!r.error) {
+      // DB-based проверка — не зависит от in-memory состояния мониторинга
+      await checkLimitsFromDb(r.accountId, r.unrealizedPnl).catch((e: Error) =>
+        console.error(`[API /sync] checkLimitsFromDb error (${r.accountId}):`, e.message)
+      );
+      // WebSocket-based проверка как дополнительный слой
       monitor.forceCheck(r.accountId).catch(console.error);
     }
   }
@@ -96,6 +101,9 @@ export async function GET(): Promise<NextResponse> {
     const r = await syncAccount(a.id);
     results.push(r);
     if (!r.error) {
+      await checkLimitsFromDb(a.id, r.unrealizedPnl).catch((e: Error) =>
+        console.error(`[API /sync] checkLimitsFromDb error (${a.id}):`, e.message)
+      );
       monitor.forceCheck(a.id).catch(console.error);
     }
   }

@@ -9,13 +9,15 @@
 import { prisma }      from "./prisma";
 import { BybitClient } from "./exchanges/bybit-client";
 import { decrypt }     from "./crypto";
+import type { BreachType } from "@/app/generated/prisma/enums";
 
 export type SyncResult = {
-  accountId: string;
-  broker:    string;
-  synced:    number;
-  skipped:   number;
-  error?:    string;
+  accountId:     string;
+  broker:        string;
+  synced:        number;
+  skipped:       number;
+  unrealizedPnl: number;
+  error?:        string;
 };
 
 // ─── Синхронизировать один аккаунт ───────────────────────────────────────────
@@ -26,11 +28,11 @@ export async function syncAccount(accountId: string): Promise<SyncResult> {
   });
 
   if (!account) {
-    return { accountId, broker: "UNKNOWN", synced: 0, skipped: 0, error: "Account not found" };
+    return { accountId, broker: "UNKNOWN", synced: 0, skipped: 0, unrealizedPnl: 0, error: "Account not found" };
   }
 
   if (!account.isActive || account.broker === "DEMO") {
-    return { accountId, broker: account.broker, synced: 0, skipped: 0 };
+    return { accountId, broker: account.broker, synced: 0, skipped: 0, unrealizedPnl: 0 };
   }
 
   if (account.broker === "BYBIT") {
@@ -38,7 +40,7 @@ export async function syncAccount(accountId: string): Promise<SyncResult> {
   }
 
   // Binance и другие — пока не реализованы
-  return { accountId, broker: account.broker, synced: 0, skipped: 0 };
+  return { accountId, broker: account.broker, synced: 0, skipped: 0, unrealizedPnl: 0 };
 }
 
 // ─── Синхронизировать все активные Bybit-аккаунты ────────────────────────────
@@ -52,6 +54,11 @@ export async function syncAllAccounts(): Promise<SyncResult[]> {
   for (const acc of accounts) {
     const result = await syncAccount(acc.id);
     results.push(result);
+    if (!result.error) {
+      await checkLimitsFromDb(acc.id, result.unrealizedPnl).catch((e: Error) =>
+        console.error(`[Sync] checkLimitsFromDb error (${acc.id}):`, e.message)
+      );
+    }
   }
   return results;
 }
@@ -68,15 +75,19 @@ async function syncBybitAccount(
   const client = new BybitClient(decrypt(apiKey), decrypt(apiSecret), isTestnet);
 
   let trades;
+  let unrealizedPnl = 0;
   try {
-    trades = await client.getTodayTrades();
+    [trades, unrealizedPnl] = await Promise.all([
+      client.getTodayTrades(),
+      client.getUnrealizedPnl().catch(() => 0),
+    ]);
   } catch (err) {
     const msg = (err as Error).message;
     console.error(`[Sync] getTodayTrades failed for ${accountId}:`, msg);
-    return { accountId, broker: "BYBIT", synced: 0, skipped: 0, error: msg };
+    return { accountId, broker: "BYBIT", synced: 0, skipped: 0, unrealizedPnl: 0, error: msg };
   }
 
-  console.log(`[Sync] ${accountId}: fetched ${trades.length} closed trade(s) from Bybit`);
+  console.log(`[Sync] ${accountId}: fetched ${trades.length} closed trade(s), unrealizedPnl=${unrealizedPnl.toFixed(2)}`);
 
   let synced = 0;
   let skipped = 0;
@@ -121,6 +132,159 @@ async function syncBybitAccount(
     }
   }
 
-  console.log(`[Sync] ${accountId}: synced=${synced}, skipped=${skipped}`);
-  return { accountId, broker: "BYBIT", synced, skipped };
+  console.log(`[Sync] ${accountId}: synced=${synced}, skipped=${skipped}, unrealizedPnl=${unrealizedPnl.toFixed(2)}`);
+  return { accountId, broker: "BYBIT", synced, skipped, unrealizedPnl };
+}
+
+// ─── DB-based limit check (не зависит от in-memory мониторинга) ───────────────
+
+export async function checkLimitsFromDb(accountId: string, unrealizedPnl = 0): Promise<{ blocked: boolean; reason?: string }> {
+  const account = await prisma.connectedAccount.findUnique({
+    where:   { id: accountId },
+    include: { user: { include: { limits: true } } },
+  });
+  if (!account || account.isBlocked || !account.isActive) return { blocked: false };
+
+  const limits = account.user.limits;
+  if (!limits) {
+    console.log(`[CheckLimits] No limits configured for account ${accountId}`);
+    return { blocked: false };
+  }
+
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+
+  const weekStart = new Date();
+  const dow = weekStart.getUTCDay();
+  weekStart.setUTCDate(weekStart.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+  weekStart.setUTCHours(0, 0, 0, 0);
+
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
+
+  const todayTrades = await prisma.trade.findMany({
+    where:  { userId: account.userId, status: "CLOSED", closedAt: { gte: todayStart } },
+    select: { realizedPnl: true },
+  });
+
+  const realizedDailyPnl = todayTrades.reduce((s, t) => s + (t.realizedPnl ?? 0), 0);
+  // Include unrealized PnL from currently open positions
+  const effectiveDailyPnl = realizedDailyPnl + unrealizedPnl;
+  const dailyLoss   = Math.abs(Math.min(effectiveDailyPnl, 0));
+  const tradesCount = todayTrades.length;
+
+  console.log(`[CheckLimits] account=${accountId} realizedPnl=${realizedDailyPnl.toFixed(2)} unrealizedPnl=${unrealizedPnl.toFixed(2)} effectiveDailyPnl=${effectiveDailyPnl.toFixed(2)} dailyLoss=${dailyLoss.toFixed(2)} limit=${limits.dailyLossLimit} trades=${tradesCount}/${limits.maxDailyTrades ?? "∞"}`);
+
+  // Check daily loss limit (realized + unrealized)
+  if (limits.dailyLossLimit && dailyLoss >= limits.dailyLossLimit) {
+    const reason = `Дневной убыток $${dailyLoss.toFixed(2)} превысил лимит $${limits.dailyLossLimit} (реализовано: $${realizedDailyPnl.toFixed(2)}, открыто: $${unrealizedPnl.toFixed(2)})`;
+    console.warn(`[CheckLimits] BLOCKING ${accountId}: ${reason}`);
+    await _dbBlock(accountId, account.userId, limits.blockDurationHours, "DAILY_LOSS_LIMIT", limits.dailyLossLimit, dailyLoss, reason);
+    return { blocked: true, reason };
+  }
+
+  // Check max daily trades
+  if (limits.maxDailyTrades && tradesCount >= limits.maxDailyTrades) {
+    const reason = `Сделок за день: ${tradesCount} (лимит: ${limits.maxDailyTrades})`;
+    console.warn(`[CheckLimits] BLOCKING ${accountId}: ${reason}`);
+    await _dbBlock(accountId, account.userId, limits.blockDurationHours, "DAILY_TRADE_COUNT", limits.maxDailyTrades, tradesCount, reason);
+    return { blocked: true, reason };
+  }
+
+  // Check weekly loss limit
+  if (limits.weeklyLossLimit) {
+    const weekTrades = await prisma.trade.findMany({
+      where:  { userId: account.userId, status: "CLOSED", closedAt: { gte: weekStart } },
+      select: { realizedPnl: true },
+    });
+    const weeklyPnl  = weekTrades.reduce((s, t) => s + (t.realizedPnl ?? 0), 0);
+    const weeklyLoss = Math.abs(Math.min(weeklyPnl, 0));
+    console.log(`[CheckLimits] account=${accountId} weeklyLoss=${weeklyLoss.toFixed(2)} limit=${limits.weeklyLossLimit}`);
+    if (weeklyLoss >= limits.weeklyLossLimit) {
+      const reason = `Недельный убыток $${weeklyLoss.toFixed(2)} превысил лимит $${limits.weeklyLossLimit}`;
+      console.warn(`[CheckLimits] BLOCKING ${accountId}: ${reason}`);
+      await _dbBlock(accountId, account.userId, limits.blockDurationHours, "WEEKLY_LOSS_LIMIT", limits.weeklyLossLimit, weeklyLoss, reason);
+      return { blocked: true, reason };
+    }
+  }
+
+  // Check monthly loss limit
+  if (limits.monthlyLossLimit) {
+    const monthTrades = await prisma.trade.findMany({
+      where:  { userId: account.userId, status: "CLOSED", closedAt: { gte: monthStart } },
+      select: { realizedPnl: true },
+    });
+    const monthlyPnl  = monthTrades.reduce((s, t) => s + (t.realizedPnl ?? 0), 0);
+    const monthlyLoss = Math.abs(Math.min(monthlyPnl, 0));
+    console.log(`[CheckLimits] account=${accountId} monthlyLoss=${monthlyLoss.toFixed(2)} limit=${limits.monthlyLossLimit}`);
+    if (monthlyLoss >= limits.monthlyLossLimit) {
+      const reason = `Месячный убыток $${monthlyLoss.toFixed(2)} превысил лимит $${limits.monthlyLossLimit}`;
+      console.warn(`[CheckLimits] BLOCKING ${accountId}: ${reason}`);
+      await _dbBlock(accountId, account.userId, limits.blockDurationHours, "MONTHLY_LOSS_LIMIT", limits.monthlyLossLimit, monthlyLoss, reason);
+      return { blocked: true, reason };
+    }
+  }
+
+  // Check consecutive losses
+  if (limits.maxConsecutiveLosses) {
+    const recent = await prisma.trade.findMany({
+      where:   { userId: account.userId, status: "CLOSED" },
+      orderBy: { closedAt: "desc" },
+      take:    limits.maxConsecutiveLosses + 1,
+      select:  { realizedPnl: true },
+    });
+    let streak = 0;
+    for (const t of recent) {
+      if ((t.realizedPnl ?? 0) < 0) streak++;
+      else break;
+    }
+    if (streak >= limits.maxConsecutiveLosses) {
+      const reason = `Серия убытков: ${streak} подряд (лимит: ${limits.maxConsecutiveLosses})`;
+      console.warn(`[CheckLimits] BLOCKING ${accountId}: ${reason}`);
+      await _dbBlock(accountId, account.userId, limits.blockDurationHours, "CONSECUTIVE_LOSSES", limits.maxConsecutiveLosses, streak, reason);
+      return { blocked: true, reason };
+    }
+  }
+
+  console.log(`[CheckLimits] account=${accountId} — all limits OK`);
+  return { blocked: false };
+}
+
+async function _dbBlock(
+  accountId:   string,
+  userId:      string,
+  durationHrs: number,
+  breachType:  BreachType,
+  limitValue:  number,
+  actualValue: number,
+  description: string,
+): Promise<void> {
+  const blockedUntil = new Date(Date.now() + durationHrs * 3_600_000);
+
+  await prisma.connectedAccount.update({
+    where: { id: accountId },
+    data:  { isBlocked: true, blockedAt: new Date(), blockedUntil, blockReason: description },
+  });
+
+  // Dedup: одно нарушение в день на тип
+  const todayStart = new Date(); todayStart.setUTCHours(0, 0, 0, 0);
+  const existing = await prisma.limitBreach.findFirst({
+    where: { accountId, breachType, isWarning: false, createdAt: { gte: todayStart } },
+  });
+  if (!existing) {
+    await prisma.limitBreach.create({
+      data: {
+        userId, accountId, breachType,
+        severity:    "CRITICAL",
+        isWarning:   false,
+        limitValue,
+        actualValue,
+        excessAmount: Math.max(0, actualValue - limitValue),
+        description,
+      },
+    });
+  }
+
+  console.log(`[CheckLimits] DB block applied for ${accountId} until ${blockedUntil.toISOString()}`);
 }

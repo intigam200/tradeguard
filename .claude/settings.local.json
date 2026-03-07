@@ -1,7 +1,23 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx tsc --noEmit)"
+      "Bash(npx tsc --noEmit)",
+      "Bash(TGUID=\"cmm6f1bjt0000t4twq6xb8290\")",
+      "Bash(curl -s \"http://localhost:3000/api/stats\" -H \"Cookie: tg_uid=$TGUID\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 -m json.tool fi)",
+      "Bash(USERID=\"cmm6f1bjt0000t4twq6xb8290\")",
+      "Bash(curl -s \"http://localhost:3000/api/trades?status=CLOSED&limit=10&closedSince=2026-03-01&closedUntil=2026-03-05\" -H \"Cookie: tg_uid=$USERID\")",
+      "Bash(python3 -c \":*)",
+      "Bash(curl -s \"http://localhost:3000/api/stats\" -H \"Cookie: tg_uid=$USERID\")",
+      "Bash(time curl -s \"http://localhost:3000/api/stats\" -b /tmp/cookies.txt)",
+      "Bash(time curl -s \"http://localhost:3000/api/broker/live\" -b /tmp/cookies.txt)",
+      "Bash(1:*)",
+      "Bash(curl -s http://localhost:3000/api/stats -H \"Cookie: tg_uid=cmm7ubqjb000004l80rww8hhn\")",
+      "Bash(curl -s http://localhost:3000/api/broker/live -H \"Cookie: tg_uid=cmm7ubqjb000004l80rww8hhn\")",
+      "Bash(curl -s \"http://localhost:3000/api/trades?limit=20&status=CLOSED\" -H \"Cookie: tg_uid=cmm7ubqjb000004l80rww8hhn\")",
+      "Bash(curl -s \"http://localhost:3000/api/breaches\" -H \"Cookie: tg_uid=cmm7ubqjb000004l80rww8hhn\")",
+      "Bash(curl -s \"http://localhost:3000/api/broker/live\" -H \"Cookie: tg_uid=cmm7ubqjb000004l80rww8hhn\")"
     ]
   }
 }
