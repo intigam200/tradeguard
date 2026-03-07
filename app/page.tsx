@@ -32,11 +32,12 @@ function Counter({ to, prefix = "", suffix = "", duration = 2000 }: { to: number
 }
 
 // ─── FAQ Accordion Item ────────────────────────────────────────────────────────
-function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
+function FaqItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
   return (
     <div className="border border-white/10 rounded-xl overflow-hidden transition-colors hover:border-white/20">
       <button
-        onClick={onToggle}
+        onClick={() => setOpen(!open)}
         className="w-full px-6 py-4 text-left flex items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors"
       >
         <span className="text-sm font-semibold text-white">{q}</span>
@@ -61,7 +62,7 @@ const t = {
       features: "Возможности",
       how: "Как это работает",
       pricing: "Цены",
-      waitlist: "Вейтлист",
+      waitlist: "Регистрация",
       login: "Войти",
       cta: "Начать бесплатно",
     },
@@ -69,7 +70,7 @@ const t = {
       badge: "Перестань сливать. Начни торговать по правилам.",
       h1a: "Твой злейший враг —",
       h1b: "это ты сам.",
-      sub: "TradeGuard — личный страж дисциплины для трейдера. Эмоции, месть рынку, азарт, оверторговля — мы останавливаем это до того, как ты теряешь деньги.",
+      sub: "TradeMarco — личный страж дисциплины для трейдера. Эмоции, месть рынку, азарт, оверторговля — мы останавливаем это до того, как ты теряешь деньги.",
       cta1: "Начать бесплатно",
       cta2: "Как это работает",
       trust1: "Без кредитной карты",
@@ -87,7 +88,7 @@ const t = {
       { icon: "📉", title: "Игнорируешь лимиты",       desc: "Знаешь, что надо остановиться, но продолжаешь. Один плохой день съедает прибыль за неделю." },
     ],
     preview: {
-      url: "app.tradeguard.io/dashboard",
+      url: "app.trademarco.com",
       alert: "3 убыточные сделки подряд — торговля приостановлена",
       breach: "Стоп!",
       breachSub: "Дневной лимит убытка достигнут",
@@ -99,12 +100,11 @@ const t = {
       sidebar: ["Дашборд", "Аналитика", "Лимиты", "Нарушения", "Настройки"],
     },
     stats: [
-      { label: "В вейтлисте" },
       { label: "Шифрование ключей" },
       { label: "Мониторинг" },
       { label: "Минут на настройку" },
     ],
-    featuresTitle: "TradeGuard — твой второй мозг",
+    featuresTitle: "TradeMarco — твой второй мозг",
     featuresSub: "Когда эмоции берут верх, система берёт контроль. Никаких человеческих слабостей.",
     featuresBadge: "Возможности",
     features: [
@@ -119,47 +119,47 @@ const t = {
     howTitle: "Просто. Честно. Эффективно.",
     howSub: "Настройка занимает 3 минуты. Первый результат — с первого торгового дня",
     steps: [
-      { num: "01", title: "Устанавливаешь правила",     desc: "Ты задаёшь свои лимиты: максимальный убыток за день, сколько сделок, какую просадку можешь пережить. Одноразово, на трезвую голову." },
-      { num: "02", title: "TradeGuard следит за тобой", desc: "Каждая сделка отслеживается в реальном времени. При нарушении правил — мгновенный алерт и блокировка." },
-      { num: "03", title: "Ты растёшь как трейдер",     desc: "Смотришь на статистику, видишь паттерны ошибок, улучшаешь дисциплину. Убытки уменьшаются, прибыль растёт." },
+      { num: "01", title: "Устанавливаешь правила",      desc: "Ты задаёшь свои лимиты: максимальный убыток за день, сколько сделок, какую просадку можешь пережить. Одноразово, на трезвую голову." },
+      { num: "02", title: "TradeMarco следит за тобой",  desc: "Каждая сделка отслеживается в реальном времени. При нарушении правил — мгновенный алерт и блокировка." },
+      { num: "03", title: "Ты растёшь как трейдер",      desc: "Смотришь на статистику, видишь паттерны ошибок, улучшаешь дисциплину. Убытки уменьшаются, прибыль растёт." },
     ],
     pricingBadge: "Цены",
     pricingTitle: "Дешевле одного убыточного дня",
     pricingSub: "Одна предотвращённая ошибка окупает подписку на месяц вперёд.",
     pricingPopular: "ПОПУЛЯРНЫЙ",
     pricing: [
-      { name: "Личный",    price: "9",  period: "мес", desc: "Для трейдеров-одиночек",             features: ["Все лимиты риска", "Автоблокировка", "Telegram алерты", "Журнал сделок", "Еженедельные отчёты"],                              cta: "Начать бесплатно",   highlight: false },
-      { name: "Трейдер+",  price: "19", period: "мес", desc: "Для серьёзного роста",               features: ["Всё из Личного", "Расширенная аналитика", "Паттерны ошибок", "Экспорт данных", "Приоритетная поддержка"],                       cta: "14 дней бесплатно",  highlight: true  },
-      { name: "Наставник", price: "49", period: "мес", desc: "Для тех, кто обучает или в группе", features: ["До 5 аккаунтов", "Совместный дашборд", "Отчёты для ментора", "Сравнение статистики", "Поддержка 24/7"],                         cta: "Попробовать",        highlight: false },
+      { name: "Essential", price: "9",  period: "мес", desc: "Для трейдеров-одиночек", features: ["До 2 биржевых аккаунтов", "Автоблокировка при нарушении лимитов", "Дневные и недельные лимиты убытка", "Лимит количества сделок", "Алерты в Telegram в реальном времени", "Журнал сделок"], cta: "Начать бесплатно", highlight: false },
+      { name: "Pro",       price: "14", period: "мес", desc: "Для серьёзного роста",   features: ["Всё из Essential", "До 10 биржевых аккаунтов", "Расширенная аналитика", "Определение паттернов ошибок", "Чат с наставником", "Приоритетная поддержка"], cta: "14 дней бесплатно", highlight: true  },
     ],
     pricingCustom: "По запросу",
-    waitlistBadge: "Ранний доступ",
-    waitlistTitle: "500+ трейдеров уже в очереди",
-    waitlistSub: "Будь среди первых, кто получит доступ к TradeGuard. Оставь email — мы сообщим при запуске.",
+    waitlistBadge: "Начни сегодня",
+    waitlistTitle: "Торгуй с дисциплиной",
+    waitlistSub: "Настройся за 3 минуты. Подключи биржу и позволь TradeMarco защитить твой капитал.",
     waitlistPlaceholder: "твой@email.com",
-    waitlistCta: "Получить ранний доступ",
+    waitlistCta: "Начать бесплатный период →",
     waitlistSuccess: "Ты в списке! Сообщим, когда откроемся. 🎉",
     waitlistDuplicate: "Этот email уже в списке. Спасибо!",
     faqBadge: "FAQ",
     faqTitle: "Часто задаваемые вопросы",
     faqItems: [
-      { q: "Как хранятся мои API-ключи?",                     a: "Все API-ключи шифруются с помощью AES-256-GCM перед сохранением в базе данных. Ключ шифрования хранится отдельно в защищённой среде. Мы не можем прочитать твои ключи — только использовать их для запросов к бирже." },
-      { q: "Могу ли я закрыть позиции вручную?",              a: "Да. TradeGuard блокирует только открытие новых позиций. Ты всегда можешь закрыть существующие позиции вручную прямо на бирже." },
-      { q: "Какие брокеры поддерживаются?",                   a: "На данный момент поддерживаются Bybit и Binance (фьючерсы). Больше брокеров — скоро." },
-      { q: "Что происходит после истечения блокировки?",      a: "Торговля автоматически разблокируется в 00:00 UTC следующего дня. Ты также можешь разблокировать вручную через настройки." },
+      { q: "Как хранятся мои API-ключи?",                a: "Все API-ключи шифруются с помощью AES-256 перед сохранением. Мы используем только права на чтение и закрытие позиций — открывать сделки или выводить средства мы не можем." },
+      { q: "Могу ли я закрыть позиции вручную?",         a: "Да. Блокировка запрещает только открытие НОВЫХ позиций. Ты всегда можешь закрыть существующие позиции вручную прямо на бирже." },
+      { q: "Какие биржи поддерживаются?",                a: "На данный момент поддерживаются Bybit и Binance (фьючерсы). Скоро — OKX, BingX и другие." },
+      { q: "Что происходит после истечения блокировки?", a: "Торговля автоматически разблокируется по истечении заданного времени (1ч, 2ч, 4ч, 8ч, 12ч или 24ч). Можно запросить досрочную разблокировку через чат поддержки." },
+      { q: "Можно ли отменить подписку?",               a: "Да, отмена в один клик в любой момент. Никаких контрактов и скрытых комиссий. Данные хранятся 30 дней после отмены." },
     ],
     ctaBadge: "Начни сегодня",
-    ctaTitle: "Хватит терять деньги на эмоциях.",
-    ctaSub: "Настройся за 3 минуты. Первый месяц бесплатно.\nБез кредитной карты.",
-    ctaBtn: "Защитить свой депозит →",
-    ctaFootnote: "Уже 500+ трейдеров в вейтлисте TradeGuard",
+    ctaTitle: "Готов торговать с дисциплиной?",
+    ctaSub: "Настройся за 3 минуты. Подключи биржу и позволь TradeMarco защитить твой капитал.",
+    ctaBtn: "Начать бесплатный период →",
+    ctaFootnote: "Настройка за 3 минуты. Без кредитной карты.",
     footer: {
       desc: "Личный страж торговой дисциплины. Помогаем трейдерам перестать терять деньги на эмоциях.",
       cols: [
         { title: "Продукт",   links: [{ label: "Возможности", href: "#features" }, { label: "Цены", href: "#pricing" }, { label: "FAQ", href: "#faq" }] },
-        { title: "Поддержка", links: [{ label: "Telegram", href: "https://t.me/tradeguard" }, { label: "Email", href: "mailto:support@tradeguard.io" }] },
+        { title: "Поддержка", links: [{ label: "Telegram", href: "https://t.me/trademarco_support" }, { label: "Email", href: "mailto:support@trademarco.com" }] },
       ],
-      copy: "© 2026 TradeGuard. Все права защищены.",
+      copy: "© 2026 TradeMarco. Все права защищены.",
       legal: [
         { label: "Политика конфиденциальности", href: "/privacy" },
         { label: "Условия использования",       href: "/terms" },
@@ -171,7 +171,7 @@ const t = {
       features: "Features",
       how: "How it works",
       pricing: "Pricing",
-      waitlist: "Waitlist",
+      waitlist: "Sign up",
       login: "Log in",
       cta: "Start for free",
     },
@@ -179,7 +179,7 @@ const t = {
       badge: "Stop blowing up. Start trading with discipline.",
       h1a: "Your biggest enemy",
       h1b: "is yourself.",
-      sub: "TradeGuard is your personal discipline guardian. Revenge trading, FOMO, overtrading, no stop-loss — we stop you before you blow your account.",
+      sub: "TradeMarco is your personal discipline guardian. Revenge trading, FOMO, overtrading, no stop-loss — we stop you before you blow your account.",
       cta1: "Start for free",
       cta2: "How it works",
       trust1: "No credit card required",
@@ -197,7 +197,7 @@ const t = {
       { icon: "📉", title: "Ignoring your limits",   desc: "You know you should stop but keep going. One bad day wipes out a week of profit." },
     ],
     preview: {
-      url: "app.tradeguard.io/dashboard",
+      url: "app.trademarco.com",
       alert: "3 consecutive losses — trading has been paused",
       breach: "Stop!",
       breachSub: "Daily loss limit reached",
@@ -209,12 +209,11 @@ const t = {
       sidebar: ["Dashboard", "Analytics", "Limits", "Breaches", "Settings"],
     },
     stats: [
-      { label: "On the waitlist" },
       { label: "Key encryption" },
       { label: "Monitoring" },
       { label: "Minutes to setup" },
     ],
-    featuresTitle: "TradeGuard is your second brain",
+    featuresTitle: "TradeMarco is your second brain",
     featuresSub: "When emotions take over, the system takes control. No human weaknesses.",
     featuresBadge: "Features",
     features: [
@@ -229,47 +228,47 @@ const t = {
     howTitle: "Simple. Honest. Effective.",
     howSub: "Setup takes 3 minutes. First results from your very first trading day",
     steps: [
-      { num: "01", title: "You set the rules",          desc: "You define your limits: max daily loss, number of trades, drawdown you can handle. Once, with a clear head." },
-      { num: "02", title: "TradeGuard watches you",     desc: "Every trade is tracked in real time. When you break your rules — instant alert and trading block." },
-      { num: "03", title: "You grow as a trader",       desc: "Review your stats, spot error patterns, improve discipline. Losses shrink, profits grow." },
+      { num: "01", title: "You set the rules",         desc: "You define your limits: max daily loss, number of trades, drawdown you can handle. Once, with a clear head." },
+      { num: "02", title: "TradeMarco watches you",    desc: "Every trade is tracked in real time. When you break your rules — instant alert and trading block." },
+      { num: "03", title: "You grow as a trader",      desc: "Review your stats, spot error patterns, improve discipline. Losses shrink, profits grow." },
     ],
     pricingBadge: "Pricing",
     pricingTitle: "Cheaper than one bad trading day",
     pricingSub: "One prevented mistake pays for a month of subscription.",
     pricingPopular: "POPULAR",
     pricing: [
-      { name: "Personal",  price: "9",  period: "mo", desc: "For solo traders",              features: ["All risk limits", "Auto-block", "Telegram alerts", "Trade journal", "Weekly reports"],                                      cta: "Start for free",   highlight: false },
-      { name: "Trader+",   price: "19", period: "mo", desc: "For serious growth",            features: ["Everything in Personal", "Advanced analytics", "Error patterns", "Data export", "Priority support"],                        cta: "14 days free",     highlight: true  },
-      { name: "Mentor",    price: "49", period: "mo", desc: "For mentors & accountability",  features: ["Up to 5 accounts", "Shared dashboard", "Mentor reports", "Stats comparison", "24/7 support"],                             cta: "Try it",           highlight: false },
+      { name: "Essential", price: "9",  period: "mo", desc: "For solo traders",    features: ["Connect up to 2 exchange accounts", "Auto-block when limits hit", "Daily & weekly loss limits", "Trade count limit", "Real-time Telegram alerts", "Trade journal"],                                                               cta: "Start for free",  highlight: false },
+      { name: "Pro",       price: "14", period: "mo", desc: "For serious growth",  features: ["Everything in Essential", "Up to 10 exchange accounts", "Advanced analytics", "Error pattern detection", "Mentor chat support", "Priority support"],                                                                                cta: "14 days free",    highlight: true  },
     ],
     pricingCustom: "Custom pricing",
-    waitlistBadge: "Early Access",
-    waitlistTitle: "Join 500+ traders on the waitlist",
-    waitlistSub: "Be among the first to access TradeGuard when we launch. Leave your email and we'll notify you.",
+    waitlistBadge: "Start today",
+    waitlistTitle: "Trade with discipline",
+    waitlistSub: "Set up in 3 minutes. Connect your exchange and let TradeMarco protect your capital.",
     waitlistPlaceholder: "your@email.com",
-    waitlistCta: "Get Early Access",
+    waitlistCta: "Start free trial →",
     waitlistSuccess: "You're on the list! We'll notify you when we launch. 🎉",
     waitlistDuplicate: "This email is already on the list. Thanks!",
     faqBadge: "FAQ",
     faqTitle: "Frequently Asked Questions",
     faqItems: [
-      { q: "Do you store my API keys securely?",       a: "Yes, all API keys are encrypted with AES-256-GCM before being stored. The encryption key is stored separately in a secure environment. We cannot read your keys — only use them to make requests to the exchange." },
-      { q: "Can I still close positions manually?",    a: "Yes, you can always close positions manually directly on your broker platform. TradeGuard only blocks opening NEW positions when your limits are triggered." },
-      { q: "Which brokers are supported?",             a: "Bybit and Binance (Futures) are currently supported. More brokers are coming soon." },
-      { q: "What happens after the block period ends?", a: "Trading is automatically unblocked at 00:00 UTC next day. You can also manually unblock through the settings page." },
+      { q: "Do you store my API keys securely?",        a: "Yes. All API keys are encrypted with AES-256 before storing. We only use read-only + close position permissions — we cannot open trades or withdraw funds on your behalf." },
+      { q: "Can I still close positions manually?",     a: "Yes. The block only prevents opening NEW positions. You can always close existing trades manually at any time." },
+      { q: "Which exchanges are supported?",            a: "Currently we support Bybit and Binance Futures. More exchanges coming soon — OKX, BingX, and others." },
+      { q: "What happens after the block period ends?", a: "Trading is automatically unblocked after your set duration (1h, 2h, 4h, 8h, 12h or 24h). You can also request early unblock via support chat — an admin reviews and approves it." },
+      { q: "Can I cancel anytime?",                    a: "Yes, cancel anytime with one click. No contracts, no hidden fees. Your data is kept for 30 days after cancellation." },
     ],
     ctaBadge: "Start today",
-    ctaTitle: "Stop losing money to your emotions.",
-    ctaSub: "Set up in 3 minutes. First month free.\nNo credit card required.",
-    ctaBtn: "Protect my account →",
-    ctaFootnote: "500+ traders already on the TradeGuard waitlist",
+    ctaTitle: "Ready to trade with discipline?",
+    ctaSub: "Set up in 3 minutes. Connect your exchange and let TradeMarco protect your capital.",
+    ctaBtn: "Start free trial →",
+    ctaFootnote: "Set up in 3 minutes. No credit card required.",
     footer: {
       desc: "Your personal trading discipline guardian. We help traders stop losing money to emotions.",
       cols: [
         { title: "Product",  links: [{ label: "Features", href: "#features" }, { label: "Pricing", href: "#pricing" }, { label: "FAQ", href: "#faq" }] },
-        { title: "Support",  links: [{ label: "Telegram", href: "https://t.me/tradeguard" }, { label: "Email", href: "mailto:support@tradeguard.io" }] },
+        { title: "Support",  links: [{ label: "Telegram", href: "https://t.me/trademarco_support" }, { label: "Email", href: "mailto:support@trademarco.com" }] },
       ],
-      copy: "© 2026 TradeGuard. All rights reserved.",
+      copy: "© 2026 TradeMarco. All rights reserved.",
       legal: [
         { label: "Privacy Policy",    href: "/privacy" },
         { label: "Terms of Service",  href: "/terms" },
@@ -313,10 +312,6 @@ export default function LandingPage() {
   const { lang, setLang }         = useLang();
   const [menuOpen, setMenuOpen]   = useState(false);
   const [scrolled, setScrolled]   = useState(false);
-  const [waitlistEmail, setWaitlistEmail]   = useState("");
-  const [waitlistLoading, setWaitlistLoading] = useState(false);
-  const [waitlistStatus, setWaitlistStatus]   = useState<"idle" | "success" | "duplicate">("idle");
-  const [openFaq, setOpenFaq]     = useState<number | null>(null);
 
   const T = t[lang];
 
@@ -325,30 +320,6 @@ export default function LandingPage() {
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  async function handleWaitlist(e: React.FormEvent) {
-    e.preventDefault();
-    if (!waitlistEmail.trim()) return;
-    setWaitlistLoading(true);
-    try {
-      const res = await fetch("/api/waitlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: waitlistEmail.trim() }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        setWaitlistStatus(data.isNew ? "success" : "duplicate");
-        setWaitlistEmail("");
-      }
-    } catch {
-      /* silent fail — show success anyway */
-      setWaitlistStatus("success");
-      setWaitlistEmail("");
-    } finally {
-      setWaitlistLoading(false);
-    }
-  }
 
   return (
     <div
@@ -381,18 +352,21 @@ export default function LandingPage() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-sm font-bold text-black shadow-lg shadow-emerald-500/30">
-              TG
+              TM
             </div>
-            <span className="font-bold text-white text-lg tracking-tight">TradeGuard</span>
+            <span className="font-bold text-white text-lg tracking-tight">TradeMarco</span>
           </Link>
 
           {/* Nav links — desktop */}
           <nav className="hidden md:flex items-center gap-8">
-            {([["#features", T.nav.features], ["#how", T.nav.how], ["#pricing", T.nav.pricing], ["#waitlist", T.nav.waitlist]] as [string, string][]).map(([href, label]) => (
+            {([["#features", T.nav.features], ["#how", T.nav.how], ["#pricing", T.nav.pricing]] as [string, string][]).map(([href, label]) => (
               <a key={href} href={href} className="text-sm text-slate-400 hover:text-white transition-colors">
                 {label}
               </a>
             ))}
+            <Link href="/login" className="text-sm text-slate-400 hover:text-white transition-colors">
+              {T.nav.waitlist}
+            </Link>
           </nav>
 
           {/* Right side */}
@@ -434,11 +408,14 @@ export default function LandingPage() {
         {/* Mobile menu */}
         {menuOpen && (
           <div className="md:hidden bg-[#0d1117] border-t border-white/5 px-6 py-4 space-y-3">
-            {([["#features", T.nav.features], ["#how", T.nav.how], ["#pricing", T.nav.pricing], ["#waitlist", T.nav.waitlist]] as [string, string][]).map(([href, label]) => (
+            {([["#features", T.nav.features], ["#how", T.nav.how], ["#pricing", T.nav.pricing]] as [string, string][]).map(([href, label]) => (
               <a key={href} href={href} onClick={() => setMenuOpen(false)} className="block text-sm text-slate-400 py-2">
                 {label}
               </a>
             ))}
+            <Link href="/login" onClick={() => setMenuOpen(false)} className="block text-sm text-slate-400 py-2">
+              {T.nav.waitlist}
+            </Link>
             <Link href="/login" className="block w-full text-center text-sm font-semibold bg-emerald-500 text-black px-5 py-2.5 rounded-lg mt-2">
               {T.nav.cta}
             </Link>
@@ -532,8 +509,8 @@ export default function LandingPage() {
               {/* Mini sidebar */}
               <div className="w-44 bg-[#161b27] border-r border-white/5 p-3 shrink-0">
                 <div className="flex items-center gap-2 px-2 py-3 mb-3">
-                  <div className="w-6 h-6 rounded bg-emerald-500 flex items-center justify-center text-[9px] font-bold text-black">TG</div>
-                  <span className="text-xs font-semibold text-white">TradeGuard</span>
+                  <div className="w-6 h-6 rounded bg-emerald-500 flex items-center justify-center text-[9px] font-bold text-black">TM</div>
+                  <span className="text-xs font-semibold text-white">TradeMarco</span>
                 </div>
                 {(["◼","📊","🛡","⚠","⚙"] as const).map((icon, i) => (
                   <div key={i} className={`flex items-center gap-2 px-2 py-2 rounded-lg mb-0.5 text-[11px] ${i === 0 ? "bg-emerald-500/10 text-emerald-400" : "text-slate-500"}`}>
@@ -637,7 +614,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-3 bg-emerald-500/5 border border-emerald-500/15 rounded-2xl px-8 py-5">
               <span className="text-2xl">💡</span>
               <p className="text-sm text-slate-300 text-left max-w-md">
-                <span className="font-bold text-white">{lang === "ru" ? "TradeGuard не изменит твою стратегию." : "TradeGuard won't change your strategy."}</span>{" "}
+                <span className="font-bold text-white">{lang === "ru" ? "TradeMarco не изменит твою стратегию." : "TradeMarco won't change your strategy."}</span>{" "}
                 {lang === "ru"
                   ? "Он изменит твоё поведение. И именно это сделает тебя прибыльным."
                   : "It will change your behavior. And that's what will make you profitable."}
@@ -651,24 +628,20 @@ export default function LandingPage() {
       {/* STATS                                                                 */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
       <section className="relative z-10 py-16 border-y border-white/5">
-        <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+        <div className="max-w-4xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
           <div>
-            <p className="text-4xl md:text-5xl font-black text-white mb-2"><Counter to={500} suffix="+" /></p>
+            <p className="text-4xl md:text-5xl font-black text-emerald-400 mb-2">AES-256</p>
             <p className="text-sm text-slate-500">{T.stats[0].label}</p>
           </div>
           <div>
-            <p className="text-4xl md:text-5xl font-black text-emerald-400 mb-2">AES-256</p>
+            <p className="text-4xl md:text-5xl font-black text-white mb-2">24/7</p>
             <p className="text-sm text-slate-500">{T.stats[1].label}</p>
           </div>
           <div>
-            <p className="text-4xl md:text-5xl font-black text-white mb-2">24/7</p>
-            <p className="text-sm text-slate-500">{T.stats[2].label}</p>
-          </div>
-          <div>
             <p className="text-4xl md:text-5xl font-black text-white mb-2">
-              {"< "}<Counter to={3} suffix={lang === "ru" ? " мин" : " min"} />
+              {"< 3 "}{lang === "ru" ? "мин" : "min"}
             </p>
-            <p className="text-sm text-slate-500">{T.stats[3].label}</p>
+            <p className="text-sm text-slate-500">{T.stats[2].label}</p>
           </div>
         </div>
       </section>
@@ -731,7 +704,7 @@ export default function LandingPage() {
             <h2 className="text-4xl md:text-5xl font-black text-white mb-4">{T.pricingTitle}</h2>
             <p className="text-slate-400">{T.pricingSub}</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
             {T.pricing.map((p) => (
               <div key={p.name} className={`relative rounded-2xl p-7 transition-all ${p.highlight ? "bg-gradient-to-b from-emerald-500/10 to-[#0d1117] border-2 border-emerald-500/40 shadow-2xl shadow-emerald-500/10" : "bg-[#0d1117] border border-white/10"}`}>
                 {p.highlight && (
@@ -775,38 +748,18 @@ export default function LandingPage() {
             <h2 className="text-4xl md:text-5xl font-black text-white mb-4">{T.waitlistTitle}</h2>
             <p className="text-slate-400 max-w-xl mx-auto mb-10">{T.waitlistSub}</p>
 
-            {waitlistStatus === "idle" ? (
-              <form onSubmit={handleWaitlist} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-                <input
-                  type="email"
-                  value={waitlistEmail}
-                  onChange={e => setWaitlistEmail(e.target.value)}
-                  placeholder={T.waitlistPlaceholder}
-                  required
-                  className="flex-1 bg-[#161b27] border border-white/10 rounded-xl px-5 py-3.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/40 transition-colors"
-                />
-                <button
-                  type="submit"
-                  disabled={waitlistLoading || !waitlistEmail.trim()}
-                  className="shrink-0 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-black font-semibold px-7 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:scale-105 whitespace-nowrap"
-                >
-                  {waitlistLoading ? "…" : T.waitlistCta}
-                </button>
-              </form>
-            ) : (
-              <div className="inline-flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl px-8 py-5 max-w-md mx-auto">
-                <span className="text-2xl">🎉</span>
-                <p className="text-sm font-semibold text-emerald-400 text-left">
-                  {waitlistStatus === "success" ? T.waitlistSuccess : T.waitlistDuplicate}
-                </p>
-              </div>
-            )}
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-10 py-4 rounded-xl text-base transition-all shadow-2xl shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-105"
+            >
+              {T.waitlistCta}
+            </Link>
 
             {/* Trust indicators */}
             <div className="mt-8 flex items-center justify-center gap-6 text-xs text-slate-600">
-              <span className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> {lang === "ru" ? "Без спама" : "No spam"}</span>
-              <span className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> {lang === "ru" ? "Отписка в 1 клик" : "Unsubscribe anytime"}</span>
-              <span className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> {lang === "ru" ? "Ранний доступ" : "Early access"}</span>
+              <span className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> {lang === "ru" ? "Без кредитной карты" : "No credit card required"}</span>
+              <span className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> {lang === "ru" ? "14 дней бесплатно" : "14-day free trial"}</span>
+              <span className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> {lang === "ru" ? "Отмена в любой момент" : "Cancel anytime"}</span>
             </div>
           </div>
         </div>
@@ -841,13 +794,7 @@ export default function LandingPage() {
           </div>
           <div className="space-y-3">
             {T.faqItems.map((item, i) => (
-              <FaqItem
-                key={i}
-                q={item.q}
-                a={item.a}
-                open={openFaq === i}
-                onToggle={() => setOpenFaq(openFaq === i ? null : i)}
-              />
+              <FaqItem key={i} q={item.q} a={item.a} />
             ))}
           </div>
         </div>
@@ -861,8 +808,8 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
             <div className="col-span-2 md:col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center text-xs font-bold text-black">TG</div>
-                <span className="font-bold text-white">TradeGuard</span>
+                <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center text-xs font-bold text-black">TM</div>
+                <span className="font-bold text-white">TradeMarco</span>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed max-w-xs">{T.footer.desc}</p>
             </div>
