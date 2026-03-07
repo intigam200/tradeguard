@@ -10,6 +10,7 @@ interface NavItem { icon: string; href: string; en: string; ru: string; hasAlert
 const NAV: NavItem[] = [
   { icon: "◼",  href: "/dashboard", en: "Dashboard",  ru: "Дашборд"    },
   { icon: "📊", href: "/journal",   en: "Analytics",  ru: "Аналитика"  },
+  { icon: "📓", href: "/notebook",  en: "Notebook",   ru: "Дневник"    },
   { icon: "🛡", href: "/limits",    en: "Limits",     ru: "Лимиты"     },
   { icon: "⚠",  href: "/breaches", en: "Violations", ru: "Нарушения",  hasAlert: true },
   { icon: "🔗", href: "/connect",   en: "Connect",    ru: "Подключить" },
@@ -49,9 +50,9 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
       <div className="px-6 py-5 border-b border-white/5">
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-sm font-bold text-black shrink-0">
-            TG
+            TM
           </div>
-          <span className="font-semibold text-white">TradeGuard</span>
+          <span className="font-semibold text-white">TradeMarco</span>
         </Link>
         <p className="text-xs text-slate-500 mt-1 ml-10">
           {lang === "en" ? "Trade Discipline" : "Контроль дисциплины"}

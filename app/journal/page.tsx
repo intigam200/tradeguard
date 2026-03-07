@@ -14,6 +14,7 @@ import {
   calcTimeAnalysis, calcSymbolBreakdown,
   type ATrade, type EquityPoint,
 } from "@/lib/analytics";
+import { ActivityMap } from "@/components/analytics/ActivityMap";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Trade = ATrade & {
@@ -251,6 +252,7 @@ export default function JournalPage() {
   const [aTrades, setATrades]   = useState<Trade[]>([]);
   const [aLoading, setALoading] = useState(true);
   const [mounted, setMounted]   = useState(false);
+  const [heatTrades, setHeatTrades] = useState<Trade[]>([]);
 
   // Calendar state
   const [year, setYear]     = useState(today.getFullYear());
@@ -264,6 +266,14 @@ export default function JournalPage() {
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
+
+  // Load all-time trades for heatmap (independent of period filter)
+  useEffect(() => {
+    fetch("/api/trades?status=CLOSED&limit=1000")
+      .then(r => r.json())
+      .then((d: { ok: boolean; trades: Trade[] }) => { if (d.ok) setHeatTrades(d.trades); })
+      .catch(() => {});
+  }, []);
 
   // Load analytics trades
   const loadAnalytics = useCallback(async (p: Period) => {
@@ -452,11 +462,11 @@ export default function JournalPage() {
               )}
             </WidgetCard>
 
-            <WidgetCard title="Activity Heatmap" subtitle="90-day P&L density (hover for details)">
+            <WidgetCard title="Activity Heatmap" subtitle="364-day P&L density (hover for details)">
               {!mounted ? (
                 <div className="h-52 flex items-center justify-center text-xs text-slate-600">Loading...</div>
               ) : (
-                <TradingHeatmap trades={filtered} />
+                <ActivityMap trades={heatTrades} />
               )}
             </WidgetCard>
           </div>

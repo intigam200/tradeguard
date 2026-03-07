@@ -1,14 +1,30 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
 import { AppHeader } from "./AppHeader";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const router = useRouter();
 
   // Auto-setup: ensure tg_uid cookie is set on first visit (needed on production)
   useEffect(() => { fetch("/api/setup").catch(() => {}); }, []);
+
+  // Client-side monitoring poll — check limits every 60 seconds
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res  = await fetch("/api/sync", { method: "POST" });
+        const data = await res.json() as { results?: { isBlocked?: boolean }[] };
+        const anyBlocked = data.results?.some(r => r.isBlocked);
+        if (anyBlocked) router.refresh();
+      } catch { /* ignore network errors */ }
+    };
+    const id = setInterval(poll, 60_000);
+    return () => clearInterval(id);
+  }, [router]);
 
   return (
     <div className="flex min-h-screen bg-[#0f1117] text-slate-200 font-[family-name:var(--font-geist-sans)]">
@@ -43,9 +59,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </button>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-black">
-              TG
+              TM
             </div>
-            <span className="font-semibold text-white text-sm">TradeGuard</span>
+            <span className="font-semibold text-white text-sm">TradeMarco</span>
           </div>
         </div>
 
