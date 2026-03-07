@@ -81,6 +81,7 @@ model User {
   connectedAccounts  ConnectedAccount[]
   supportMessages    SupportMessage[]
   unblockRequests    UnblockRequest[]
+  notes              Note[]
 
   @@map("users")
 }
@@ -242,4 +243,21 @@ model ConnectedAccount {
   @@index([userId])
   @@index([isActive, isBlocked])
   @@map("connected_accounts")
+}
+
+model Note {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  images    String[]  @default([])
+  tags      String[]  @default([])
+  mood      String?
+  tradeDate DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("notes")
 }
