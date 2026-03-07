@@ -32,7 +32,7 @@ const PERIODS: { key: Period; label: string }[] = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const $ = (v: number, dec = 2) =>
-  (v >= 0 ? "+" : "") + "$" + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  (v >= 0 ? "+" : "-") + "$" + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const pct = (v: number) => (v * 100).toFixed(1) + "%";
 const pnlCls = (v: number) => v > 0 ? "text-emerald-400" : v < 0 ? "text-red-400" : "text-slate-400";
 const getDaysInMonth = (y: number, m: number) => new Date(y, m + 1, 0).getDate();
@@ -287,7 +287,7 @@ export default function JournalPage() {
     try {
       const since = `${y}-${String(m+1).padStart(2,"0")}-01`;
       const until = `${y}-${String(m+1).padStart(2,"0")}-${getDaysInMonth(y,m)}`;
-      const res  = await fetch(`/api/trades?limit=500&status=CLOSED&since=${since}&until=${until}`);
+      const res  = await fetch(`/api/trades?limit=500&status=CLOSED&closedSince=${since}&closedUntil=${until}`);
       const json = await res.json() as { ok: boolean; trades: Trade[] };
       if (!json.ok) return;
       const grouped: Record<string, DayData> = {};

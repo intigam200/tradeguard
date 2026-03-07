@@ -46,10 +46,8 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json({ ok: true, accounts });
   } catch (err) {
     console.error("[API /accounts] GET error:", err);
-    return NextResponse.json(
-      { ok: false, error: (err as Error).message },
-      { status: 500 }
-    );
+    // Возвращаем пустой массив вместо 500 чтобы страница не крашилась
+    return NextResponse.json({ ok: true, accounts: [] });
   }
 }
 

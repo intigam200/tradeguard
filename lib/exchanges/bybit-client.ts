@@ -236,12 +236,20 @@ export class BybitClient {
     console.log(`[BybitClient] Closed ${openPositions.length} positions`);
   }
 
-  private async getOpenPositions(): Promise<BybitPosition[]> {
+  async getOpenPositions(): Promise<BybitPosition[]> {
     const result = await this.restGet<{ list: BybitPosition[] }>(
       "/v5/position/list",
       { category: "linear", settleCoin: "USDT" }
     );
     return result.list;
+  }
+
+  /** Суммарный unrealized PnL по всем открытым позициям */
+  async getUnrealizedPnl(): Promise<number> {
+    const positions = await this.getOpenPositions();
+    return positions
+      .filter(p => parseFloat(p.size) > 0 && p.side !== "None")
+      .reduce((sum, p) => sum + parseFloat(p.unrealisedPnl), 0);
   }
 
   private async placeMarketClose(symbol: string, side: string, qty: string): Promise<void> {

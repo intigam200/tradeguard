@@ -7,6 +7,14 @@ import { validators, errorMessages, filters } from "@/lib/validation";
 import { BlockTimer } from "@/components/BlockTimer";
 import { useLang } from "@/context/language";
 
+// Module-level helper — safe from closure/HMR issues
+function withTimeout(p: Promise<Response>, ms: number): Promise<Response> {
+  return Promise.race([
+    p,
+    new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms)),
+  ]);
+}
+
 type BrokerDef = {
   id: string;
   name: string;
@@ -96,42 +104,45 @@ export default function ConnectPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [labelError,  setLabelError]  = useState("");
 
-  // ── Инициализация: создать/получить пользователя, загрузить аккаунты ─────────
+  // ── Инициализация: загрузить аккаунты, при 401 — setup + retry ──────────────
 
-  useEffect(() => {
-    setup();
-  }, []);
+  useEffect(() => { setup(); }, []);
+
+  async function loadAccounts() {
+    try {
+      const res  = await withTimeout(fetch("/api/accounts"), 3000);
+      const data = await res.json() as { ok: boolean; accounts?: ConnectedAccount[] };
+      if (data.ok) {
+        const accs = data.accounts ?? [];
+        setAccounts(accs);
+        if (accs.length > 0) setShowForm(false);
+      }
+      return res.status;
+    } catch (err) {
+      console.error("loadAccounts error:", err);
+      return 500;
+    }
+  }
 
   async function setup() {
     setRetrying(true);
     setDbError(false);
     try {
-      const res  = await fetch("/api/setup");
-      const data = await res.json() as { ok: boolean; error?: string };
-      if (!data.ok) {
-        console.error("Setup failed:", data.error);
+      // Сначала пробуем сразу — если AppShell уже поставил cookie, это быстро
+      const status = await loadAccounts();
+      if (status === 401) {
+        // Cookie ещё не установлен — делаем setup, потом один retry
+        try { await withTimeout(fetch("/api/setup"), 3000); } catch { /* ignore */ }
+        const status2 = await loadAccounts();
+        if (status2 !== 200 && status2 !== 401) setDbError(true);
+      } else if (status >= 500) {
         setDbError(true);
-        return;
       }
-      await loadAccounts();
     } catch (err) {
       console.error("Setup error:", err);
       setDbError(true);
     } finally {
       setRetrying(false);
-    }
-  }
-
-  async function loadAccounts() {
-    try {
-      const res  = await fetch("/api/accounts");
-      const data = await res.json() as { ok: boolean; accounts: ConnectedAccount[] };
-      if (data.ok) {
-        setAccounts(data.accounts);
-        if (data.accounts.length > 0) setShowForm(false);
-      }
-    } catch (err) {
-      console.error("loadAccounts error:", err);
     }
   }
 
@@ -332,13 +343,19 @@ export default function ConnectPage() {
                         )}
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDisconnect(acc.id)}
-                      disabled={disconnecting === acc.id}
-                      className="text-xs text-slate-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      {disconnecting === acc.id ? "..." : t("Disconnect", "Отключить")}
-                    </button>
+                    {acc.isBlocked && acc.blockedUntil && new Date(acc.blockedUntil) > new Date() ? (
+                      <span className="text-[10px] text-slate-600 border border-white/5 px-3 py-1.5 rounded-lg">
+                        🔒 {t("Locked", "Заблокирован")}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleDisconnect(acc.id)}
+                        disabled={disconnecting === acc.id}
+                        className="text-xs text-slate-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {disconnecting === acc.id ? "..." : t("Disconnect", "Отключить")}
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -407,6 +424,11 @@ export default function ConnectPage() {
                       </label>
                       <input
                         type="text"
+                        name="account-label"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                         value={label}
                         onChange={e => {
                           const filtered = filters.englishName(e.target.value);
@@ -449,6 +471,11 @@ export default function ConnectPage() {
                           <div className="relative">
                             <input
                               type={f.secret && !showSecret[f.key] ? "password" : "text"}
+                              name={`broker-${f.key}`}
+                              autoComplete={f.secret ? "new-password" : "off"}
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
                               value={values[f.key] ?? ""}
                               onChange={e => {
                                 const filtered = filters.apiKey(e.target.value);

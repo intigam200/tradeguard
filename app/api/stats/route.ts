@@ -32,11 +32,23 @@ export async function GET(): Promise<NextResponse> {
   monthStart.setUTCDate(1);
   monthStart.setUTCHours(0, 0, 0, 0);
 
+  const threeMonthStart = new Date();
+  threeMonthStart.setUTCMonth(threeMonthStart.getUTCMonth() - 3);
+  threeMonthStart.setUTCHours(0, 0, 0, 0);
+
   try {
+    const now = new Date();
+
     const [
-      accounts, limits, breachesToday, totalBreaches, recentBreaches,
+      , accounts, limits, breachesToday, totalBreaches, recentBreaches,
       todayTrades, weekTrades, monthTrades, recentClosedTrades,
+      threeMonthAgg, allTimeAgg,
     ] = await Promise.all([
+      // Авто-сброс истёкших блокировок (параллельно с остальными запросами)
+      prisma.connectedAccount.updateMany({
+        where: { userId, isBlocked: true, blockedUntil: { lt: now } },
+        data:  { isBlocked: false, blockedUntil: null, blockReason: null },
+      }),
       prisma.connectedAccount.findMany({
         where:   { userId, isActive: true },
         select:  { id: true, broker: true, label: true, isBlocked: true,
@@ -67,12 +79,22 @@ export async function GET(): Promise<NextResponse> {
         take:    20,
         select:  { realizedPnl: true },
       }),
+      prisma.trade.aggregate({
+        where: { userId, status: "CLOSED", closedAt: { gte: threeMonthStart } },
+        _sum:  { realizedPnl: true },
+      }),
+      prisma.trade.aggregate({
+        where: { userId, status: "CLOSED" },
+        _sum:  { realizedPnl: true },
+      }),
     ]);
 
     const dailyPnl         = todayTrades.reduce((s, t) => s + (t.realizedPnl ?? 0), 0);
     const dailyTradesCount = todayTrades.length;
     const weeklyPnl        = weekTrades.reduce((s, t) => s + (t.realizedPnl ?? 0), 0);
     const monthlyPnl       = monthTrades.reduce((s, t) => s + (t.realizedPnl ?? 0), 0);
+    const threeMonthPnl    = threeMonthAgg._sum.realizedPnl ?? 0;
+    const allTimePnl       = allTimeAgg._sum.realizedPnl ?? 0;
 
     let consecutiveLosses = 0;
     for (const t of recentClosedTrades) {
@@ -86,7 +108,7 @@ export async function GET(): Promise<NextResponse> {
       accounts,
       limits,
       hasLimits: limits !== null,
-      usage: { dailyPnl, dailyTradesCount, weeklyPnl, monthlyPnl, consecutiveLosses },
+      usage: { dailyPnl, dailyTradesCount, weeklyPnl, monthlyPnl, threeMonthPnl, allTimePnl, consecutiveLosses },
       breachesToday,
       totalBreaches,
       recentBreaches,

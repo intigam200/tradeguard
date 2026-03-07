@@ -355,7 +355,7 @@ export default function LandingPage() {
       className="min-h-screen text-slate-200 overflow-x-hidden"
       style={{
         fontFamily: "var(--font-geist-sans)",
-        background: "linear-gradient(135deg, #0f1117 0%, #1a1f35 50%, #0f1117 100%)",
+        background: "#0a0a0a",
       }}
     >
 
