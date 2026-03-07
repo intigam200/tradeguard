@@ -8,6 +8,8 @@ import { cookies }                   from "next/headers";
 import { prisma }                    from "@/lib/prisma";
 import { sendTelegramAlert }         from "@/lib/notifications/telegram";
 
+export const dynamic = 'force-dynamic';
+
 async function getUserId(): Promise<string | null> {
   const store = await cookies();
   return store.get("tg_uid")?.value ?? null;

@@ -13,6 +13,8 @@ import { prisma }        from "@/lib/prisma";
 import { syncAccount, syncAllAccounts, checkLimitsFromDb } from "@/lib/sync";
 import { monitor }       from "@/lib/monitor";
 
+export const dynamic = 'force-dynamic';
+
 async function getUserId(): Promise<string | null> {
   const cookieStore = await cookies();
   return cookieStore.get("tg_uid")?.value ?? null;

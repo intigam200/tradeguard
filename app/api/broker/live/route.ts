@@ -10,6 +10,8 @@ import { prisma }         from "@/lib/prisma";
 import { BybitClient }    from "@/lib/exchanges/bybit-client";
 import { decrypt }        from "@/lib/crypto";
 
+export const dynamic = 'force-dynamic';
+
 async function getUserId(): Promise<string | null> {
   const cookieStore = await cookies();
   return cookieStore.get("tg_uid")?.value ?? null;

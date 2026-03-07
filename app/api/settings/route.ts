@@ -9,6 +9,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies }                   from "next/headers";
 import { prisma }                    from "@/lib/prisma";
 
+export const dynamic = 'force-dynamic';
+
 async function getUserId(): Promise<string | null> {
   const store = await cookies();
   return store.get("tg_uid")?.value ?? null;
