@@ -13,6 +13,8 @@ import { BybitClient }  from "@/lib/exchanges/bybit-client";
 import { BinanceClient } from "@/lib/exchanges/binance-client";
 import { encrypt }      from "@/lib/crypto";
 
+export const dynamic = 'force-dynamic';
+
 // ─── Хелпер: читает userId из cookie ─────────────────────────────────────────
 
 async function getUserId(): Promise<string | null> {

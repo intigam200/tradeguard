@@ -20,6 +20,8 @@ import { cookies }   from "next/headers";
 import { prisma }    from "@/lib/prisma";
 import type { Prisma } from "@/app/generated/prisma/client";
 
+export const dynamic = 'force-dynamic';
+
 async function getUserId(): Promise<string | null> {
   const cookieStore = await cookies();
   return cookieStore.get("tg_uid")?.value ?? null;

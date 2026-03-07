@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 
+export const dynamic = 'force-dynamic';
+
 const DEFAULT_EMAIL = "trader@tradeguard.local";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
