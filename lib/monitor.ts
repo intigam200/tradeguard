@@ -1,125 +1,56 @@
 /**
- * MonitorManager — Singleton-менеджер мониторинга всех активных аккаунтов.
+ * MonitorManager — DB-based stub (WebSocket disabled on Vercel serverless)
  *
- * При старте сервера:
- *   1. Загружает все активные ConnectedAccount из БД
- *   2. Запускает LimitEngine.startMonitoring() для каждого
+ * Vercel kills long-running connections after ~10s, so WebSocket monitoring
+ * via LimitEngine does NOT work. Instead, limit checks run after every sync:
+ *   client sync → /api/trades/import → checkLimitsFromDb()
  *
- * Использует globalThis для сохранения экземпляра между hot-reload в dev-режиме.
- *
- * Использование:
- *   import { monitor } from "@/lib/monitor";
- *   await monitor.addAccount(accountId);
- *   await monitor.removeAccount(accountId);
- *   monitor.status(); // список всех активных мониторингов
+ * This stub keeps the same interface so all API routes continue to compile.
  */
 
-import { prisma }      from "./prisma";
-import { LimitEngine } from "./limit-engine";
-import type { ConnectedAccount } from "@/app/generated/prisma/client";
-
-// ─── Singleton ────────────────────────────────────────────────────────────────
+import { checkLimitsFromDb } from "./sync";
+import { prisma }            from "./prisma";
 
 const globalForMonitor = globalThis as unknown as {
   __tradeGuardMonitor: MonitorManager | undefined;
 };
 
 class MonitorManager {
-  private readonly engine = new LimitEngine();
   private initialized = false;
-
-  // ── Инициализация при старте сервера ────────────────────────────────────────
 
   async init(): Promise<void> {
     if (this.initialized) return;
     this.initialized = true;
-
-    console.log("[Monitor] Initializing TradeGuard monitor...");
-
-    let accounts: ConnectedAccount[] = [];
-    try {
-      accounts = await prisma.connectedAccount.findMany({
-        where: { isActive: true },
-      });
-    } catch (err) {
-      // Если БД недоступна (например, нет миграций) — логируем и продолжаем
-      console.warn("[Monitor] Failed to load accounts from DB:", (err as Error).message);
-      return;
-    }
-
-    console.log(`[Monitor] Found ${accounts.length} active account(s)`);
-
-    const results = await Promise.allSettled(
-      accounts.map((acc) =>
-        this.engine.startMonitoring(acc).then(() => {
-          console.log(`[Monitor] Started monitoring: ${acc.id} (${acc.broker})`);
-        })
-      )
-    );
-
-    const failed = results.filter((r) => r.status === "rejected");
-    if (failed.length > 0) {
-      console.warn(`[Monitor] ${failed.length} account(s) failed to start monitoring`);
-    }
-
-    console.log(`[Monitor] Initialized — monitoring ${this.engine.size} account(s)`);
+    console.log("[Monitor] DB-based monitoring active (WebSocket disabled on Vercel)");
   }
-
-  // ── Добавить аккаунт в мониторинг (после подключения нового брокера) ────────
 
   async addAccount(accountId: string): Promise<void> {
-    let account: ConnectedAccount | null = null;
-    try {
-      account = await prisma.connectedAccount.findUnique({
-        where: { id: accountId },
-      });
-    } catch (err) {
-      throw new Error(`[Monitor] DB error while fetching account ${accountId}: ${(err as Error).message}`);
-    }
-
-    if (!account) {
-      throw new Error(`[Monitor] Account not found: ${accountId}`);
-    }
-    if (!account.isActive) {
-      throw new Error(`[Monitor] Account ${accountId} is not active`);
-    }
-
-    await this.engine.startMonitoring(account);
-    console.log(`[Monitor] Added account ${accountId} to monitoring`);
+    console.log(`[Monitor] Account registered for DB monitoring: ${accountId}`);
   }
-
-  // ── Удалить аккаунт из мониторинга (после отключения брокера) ───────────────
 
   removeAccount(accountId: string): void {
-    this.engine.stopMonitoring(accountId);
-    console.log(`[Monitor] Removed account ${accountId} from monitoring`);
+    console.log(`[Monitor] Account removed: ${accountId}`);
   }
-
-  // ── Разблокировать аккаунт вручную (только для admins) ──────────────────────
 
   async unblockAccount(accountId: string): Promise<void> {
-    await this.engine.unblockAccount(accountId);
+    await prisma.connectedAccount.update({
+      where: { id: accountId },
+      data:  { isBlocked: false, blockedUntil: null, blockReason: null },
+    });
+    console.log(`[Monitor] Unblocked account ${accountId}`);
   }
 
-  // ── Форсировать проверку лимитов вручную ────────────────────────────────────
-
+  // Run a DB-based limit check (no Bybit API call — reads from trades table)
   async forceCheck(accountId: string): Promise<void> {
-    await this.engine.checkLimits(accountId);
+    await checkLimitsFromDb(accountId, 0);
   }
 
-  // ── Статус всех мониторингов ─────────────────────────────────────────────────
-
-  status(): Array<{
-    accountId:   string;
-    broker:      string;
-    isBlocked:   boolean;
-    lastCheckAt: Date;
-  }> {
-    return this.engine.getStatus();
+  status(): Array<{ accountId: string; broker: string; isBlocked: boolean; lastCheckAt: Date }> {
+    return [];
   }
+
+  get size(): number { return 0; }
 }
-
-// ─── Экспорт глобального singleton ────────────────────────────────────────────
 
 function getMonitor(): MonitorManager {
   if (!globalForMonitor.__tradeGuardMonitor) {

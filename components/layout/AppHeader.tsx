@@ -79,9 +79,9 @@ async function bybitGet<T>(
 async function syncBybitAccount(acc: AccountInfo): Promise<{ synced: number; skipped: number; isBlocked: boolean }> {
   const baseUrl = acc.isTestnet ? "https://api-demo.bybit.com" : "https://api.bybit.com";
 
-  // 1. Fetch closed trades (today)
-  const todayMs = new Date(); todayMs.setUTCHours(0, 0, 0, 0);
-  const closedQs = `category=linear&limit=200&startTime=${todayMs.getTime()}`;
+  // 1. Fetch closed trades — last 7 days
+  const sevenDaysMs = Date.now() - 7 * 24 * 3_600_000;
+  const closedQs = `category=linear&limit=200&startTime=${sevenDaysMs}`;
   const closedSign = await bybitSign(acc.id, closedQs);
   if (!closedSign?.ok) return { synced: 0, skipped: 0, isBlocked: false };
 
@@ -117,6 +117,35 @@ async function syncBybitAccount(acc: AccountInfo): Promise<{ synced: number; ski
   } catch { /* ignore */ }
 
   return { synced: 0, skipped: 0, isBlocked: false };
+}
+
+// ── Quick check: only unrealized PnL → check limits (no trade fetch) ─────────
+async function quickCheckAccount(acc: AccountInfo): Promise<boolean> {
+  const baseUrl = acc.isTestnet ? "https://api-demo.bybit.com" : "https://api.bybit.com";
+  let unrealizedPnl = 0;
+
+  const posQs   = "category=linear&settleCoin=USDT";
+  const posSign = await bybitSign(acc.id, posQs);
+  if (posSign?.ok) {
+    type PosData = { retCode: number; result?: { list?: { unrealisedPnl?: string; size?: string }[] } };
+    const posData = await bybitGet<PosData>(baseUrl, "/v5/position/list", posQs, posSign);
+    if (posData?.retCode === 0) {
+      unrealizedPnl = (posData.result?.list ?? [])
+        .filter(p => parseFloat(p.size ?? "0") !== 0)
+        .reduce((s, p) => s + parseFloat(p.unrealisedPnl ?? "0"), 0);
+    }
+  }
+
+  // Send unrealized PnL to server to check limits (no trade import)
+  try {
+    const res  = await fetch("/api/trades/import", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ accountId: acc.id, trades: [], unrealizedPnl }),
+    });
+    const data = await res.json() as { ok: boolean; isBlocked?: boolean };
+    return data.ok && (data.isBlocked ?? false);
+  } catch { return false; }
 }
 
 export function AppHeader() {
@@ -162,6 +191,37 @@ export function AppHeader() {
     window.addEventListener("tradeguard:synced", onSynced);
     return () => { clearInterval(iv); window.removeEventListener("tradeguard:synced", onSynced); };
   }, []);
+
+  // Auto quick-check every 2 minutes: fetch unrealized PnL from Bybit in browser,
+  // send to server for limit check — no UI spinner, silent background task
+  useEffect(() => {
+    const autoCheck = async () => {
+      try {
+        const accRes  = await fetch("/api/accounts");
+        const accData = await accRes.json() as { ok: boolean; accounts?: AccountInfo[] };
+        const accounts = accData.accounts ?? [];
+        let anyBlocked = false;
+        for (const acc of accounts) {
+          if (acc.broker !== "BYBIT") continue;
+          const blocked = await quickCheckAccount(acc);
+          if (blocked) anyBlocked = true;
+        }
+        if (anyBlocked) {
+          await loadStats();
+          window.location.reload();
+        }
+      } catch { /* ignore */ }
+    };
+
+    // Start after 30s (let user settle) then every 2 minutes
+    const startTimer = setTimeout(() => {
+      autoCheck();
+      const iv = setInterval(autoCheck, 120_000);
+      return () => clearInterval(iv);
+    }, 30_000);
+
+    return () => clearTimeout(startTimer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close bell dropdown when clicking outside
   useEffect(() => {

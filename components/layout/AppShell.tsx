@@ -1,51 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
 import { AppHeader } from "./AppHeader";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [ready, setReady] = useState(false);
-  const router = useRouter();
 
-  // Step 1: ensure tg_uid cookie is set FIRST, then start everything else.
-  // All other effects wait for `ready` so they never fire before the cookie exists.
+  // Ensure tg_uid cookie is set before rendering — all other logic lives in AppHeader
   useEffect(() => {
     fetch("/api/setup")
       .then(r => r.json())
-      .then((d: { ok: boolean }) => {
-        if (d.ok) setReady(true);
-      })
-      .catch(() => setReady(true)); // allow render even if setup fails (cookie may already exist)
+      .then((d: { ok: boolean }) => { if (d.ok) setReady(true); })
+      .catch(() => setReady(true));
   }, []);
-
-  // Start WebSocket monitoring — runs only after cookie is confirmed
-  useEffect(() => {
-    if (!ready) return;
-    fetch("/api/monitor/start", { method: "POST" })
-      .then(r => r.json())
-      .then((d: { ok: boolean; message?: string }) => {
-        if (d.ok) console.log("[Monitor]", d.message);
-      })
-      .catch(() => {});
-  }, [ready]);
-
-  // Client-side monitoring poll — check limits every 60 seconds
-  useEffect(() => {
-    if (!ready) return;
-    const poll = async () => {
-      try {
-        const res  = await fetch("/api/sync", { method: "POST" });
-        const data = await res.json() as { results?: { isBlocked?: boolean }[] };
-        const anyBlocked = data.results?.some(r => r.isBlocked);
-        if (anyBlocked) router.refresh();
-      } catch { /* ignore network errors */ }
-    };
-    const id = setInterval(poll, 60_000);
-    return () => clearInterval(id);
-  }, [ready, router]);
 
   // Show spinner until setup cookie is confirmed
   if (!ready) {

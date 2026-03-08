@@ -74,18 +74,18 @@ async function syncBybitAccount(
 ): Promise<SyncResult> {
   const client = new BybitClient(decrypt(apiKey), decrypt(apiSecret), isTestnet);
 
-  // Первый запуск (нет сделок в БД) → тянем 90 дней истории, иначе только сегодня
+  // Первый запуск → 90 дней; повторный → последние 7 дней
   const existingCount = await prisma.trade.count({ where: { accountId } });
   const isFirstSync   = existingCount === 0;
   const startMs       = isFirstSync
     ? Date.now() - 90 * 24 * 3_600_000
-    : Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate());
+    : Date.now() -  7 * 24 * 3_600_000;
 
   let trades;
   let unrealizedPnl = 0;
   try {
     [trades, unrealizedPnl] = await Promise.all([
-      isFirstSync ? client.getHistoricalTrades(startMs) : client.getTodayTrades(),
+      client.getHistoricalTrades(startMs),
       client.getUnrealizedPnl().catch(() => 0),
     ]);
   } catch (err) {
