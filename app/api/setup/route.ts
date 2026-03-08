@@ -52,6 +52,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     // Устанавливаем cookie на 30 дней
     response.cookies.set("tg_uid", user.id, {
       httpOnly: true,
+      secure:   process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge:   60 * 60 * 24 * 30,
       path:     "/",

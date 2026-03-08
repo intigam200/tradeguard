@@ -7,23 +7,34 @@ import { AppHeader } from "./AppHeader";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [ready, setReady] = useState(false);
   const router = useRouter();
 
-  // Auto-setup: ensure tg_uid cookie is set on first visit (needed on production)
-  useEffect(() => { fetch("/api/setup").catch(() => {}); }, []);
-
-  // Start WebSocket monitoring for all active accounts on mount
+  // Step 1: ensure tg_uid cookie is set FIRST, then start everything else.
+  // All other effects wait for `ready` so they never fire before the cookie exists.
   useEffect(() => {
+    fetch("/api/setup")
+      .then(r => r.json())
+      .then((d: { ok: boolean }) => {
+        if (d.ok) setReady(true);
+      })
+      .catch(() => setReady(true)); // allow render even if setup fails (cookie may already exist)
+  }, []);
+
+  // Start WebSocket monitoring — runs only after cookie is confirmed
+  useEffect(() => {
+    if (!ready) return;
     fetch("/api/monitor/start", { method: "POST" })
       .then(r => r.json())
       .then((d: { ok: boolean; message?: string }) => {
         if (d.ok) console.log("[Monitor]", d.message);
       })
       .catch(() => {});
-  }, []);
+  }, [ready]);
 
   // Client-side monitoring poll — check limits every 60 seconds
   useEffect(() => {
+    if (!ready) return;
     const poll = async () => {
       try {
         const res  = await fetch("/api/sync", { method: "POST" });
@@ -34,7 +45,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
     const id = setInterval(poll, 60_000);
     return () => clearInterval(id);
-  }, [router]);
+  }, [ready, router]);
+
+  // Show spinner until setup cookie is confirmed
+  if (!ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0f1117]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-7 h-7 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-slate-600">Loading…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-[#0f1117] text-slate-200 font-[family-name:var(--font-geist-sans)]">

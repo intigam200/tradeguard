@@ -27,9 +27,10 @@ export async function POST(req: NextRequest) {
     const response = NextResponse.json({ ok: true, userId: user.id });
     response.cookies.set("tg_uid", user.id, {
       httpOnly: true,
+      secure:   process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 30,
-      path: "/",
+      maxAge:   60 * 60 * 24 * 30,
+      path:     "/",
     });
 
     return response;
