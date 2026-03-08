@@ -12,6 +12,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Auto-setup: ensure tg_uid cookie is set on first visit (needed on production)
   useEffect(() => { fetch("/api/setup").catch(() => {}); }, []);
 
+  // Start WebSocket monitoring for all active accounts on mount
+  useEffect(() => {
+    fetch("/api/monitor/start", { method: "POST" })
+      .then(r => r.json())
+      .then((d: { ok: boolean; message?: string }) => {
+        if (d.ok) console.log("[Monitor]", d.message);
+      })
+      .catch(() => {});
+  }, []);
+
   // Client-side monitoring poll — check limits every 60 seconds
   useEffect(() => {
     const poll = async () => {

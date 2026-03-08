@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * GET  /api/monitor/status  — статус мониторинга всех аккаунтов
  * POST /api/monitor/unblock — ручная разблокировка аккаунта (только admin)

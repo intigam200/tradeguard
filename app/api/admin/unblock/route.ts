@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/admin/unblock?userId=...&token=...
  * Admin approves an unblock request. Triggered by a Telegram link.
