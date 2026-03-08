@@ -74,20 +74,27 @@ async function syncBybitAccount(
 ): Promise<SyncResult> {
   const client = new BybitClient(decrypt(apiKey), decrypt(apiSecret), isTestnet);
 
+  // Первый запуск (нет сделок в БД) → тянем 90 дней истории, иначе только сегодня
+  const existingCount = await prisma.trade.count({ where: { accountId } });
+  const isFirstSync   = existingCount === 0;
+  const startMs       = isFirstSync
+    ? Date.now() - 90 * 24 * 3_600_000
+    : Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate());
+
   let trades;
   let unrealizedPnl = 0;
   try {
     [trades, unrealizedPnl] = await Promise.all([
-      client.getTodayTrades(),
+      isFirstSync ? client.getHistoricalTrades(startMs) : client.getTodayTrades(),
       client.getUnrealizedPnl().catch(() => 0),
     ]);
   } catch (err) {
     const msg = (err as Error).message;
-    console.error(`[Sync] getTodayTrades failed for ${accountId}:`, msg);
+    console.error(`[Sync] fetchTrades failed for ${accountId}:`, msg);
     return { accountId, broker: "BYBIT", synced: 0, skipped: 0, unrealizedPnl: 0, error: msg };
   }
 
-  console.log(`[Sync] ${accountId}: fetched ${trades.length} closed trade(s), unrealizedPnl=${unrealizedPnl.toFixed(2)}`);
+  console.log(`[Sync] ${accountId}: fetched ${trades.length} closed trade(s) (${isFirstSync ? "full 90-day history" : "today only"}), unrealizedPnl=${unrealizedPnl.toFixed(2)}`);
 
   let synced = 0;
   let skipped = 0;

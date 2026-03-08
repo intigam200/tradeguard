@@ -309,6 +309,32 @@ export class BybitClient {
     return result.list;
   }
 
+  // ── REST: Исторические сделки с пагинацией (для первичной синхронизации) ────
+
+  async getHistoricalTrades(startMs: number, maxRecords = 2000): Promise<BybitClosedPnlRecord[]> {
+    const all: BybitClosedPnlRecord[] = [];
+    let cursor: string | undefined;
+
+    do {
+      const params: Record<string, string> = {
+        category:  "linear",
+        startTime: startMs.toString(),
+        limit:     "200",
+      };
+      if (cursor) params.cursor = cursor;
+
+      type R = { list: BybitClosedPnlRecord[]; nextPageCursor?: string };
+      const result = await this.restGet<R>("/v5/position/closed-pnl", params);
+
+      all.push(...result.list);
+      cursor = result.nextPageCursor || undefined;
+
+      if (!cursor || result.list.length < 200) break;
+    } while (all.length < maxRecords);
+
+    return all;
+  }
+
   // ── REST: Количество сделок за дату ────────────────────────────────────────
 
   async getTradesCount(date: Date): Promise<number> {
