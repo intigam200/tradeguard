@@ -56,11 +56,12 @@ export async function GET(): Promise<NextResponse> {
 // ─── POST /api/accounts ───────────────────────────────────────────────────────
 
 type ConnectBody = {
-  broker:     "BYBIT" | "BINANCE" | "DEMO";
-  apiKey:     string;
-  apiSecret:  string;
-  label?:     string;
-  isTestnet?: boolean;
+  broker:            "BYBIT" | "BINANCE" | "DEMO";
+  apiKey:            string;
+  apiSecret:         string;
+  label?:            string;
+  isTestnet?:        boolean;
+  skipVerification?: boolean; // true когда верификация уже прошла на клиенте
 };
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { broker, apiKey, apiSecret, label, isTestnet = false } = body;
+  const { broker, apiKey, apiSecret, label, isTestnet = false, skipVerification = false } = body;
 
   if (!broker) {
     return NextResponse.json(
@@ -99,6 +100,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (broker === "DEMO") {
     // Демо-режим: не нужны реальные ключи
     balance = 10000;
+  } else if (skipVerification) {
+    // Верификация уже прошла на клиенте — просто сохраняем ключи
+    if (!apiKey || !apiSecret) {
+      return NextResponse.json(
+        { ok: false, error: "apiKey и apiSecret обязательны" },
+        { status: 400 }
+      );
+    }
+    console.log(`[API /accounts] skipVerification=true for broker ${broker}`);
   } else {
     if (!apiKey || !apiSecret) {
       return NextResponse.json(

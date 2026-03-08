@@ -15,6 +15,67 @@ function withTimeout(p: Promise<Response>, ms: number): Promise<Response> {
   ]);
 }
 
+// ── Клиентская верификация Bybit (минуя Vercel — напрямую из браузера) ────────
+async function verifyBybitDirect(
+  apiKey: string,
+  apiSecret: string,
+  isTestnet: boolean,
+): Promise<{ ok: boolean; balance: number; error?: string }> {
+  const baseUrl = isTestnet ? "https://api-demo.bybit.com" : "https://api.bybit.com";
+  const ts = Date.now().toString();
+  const rw = "5000";
+  const qs = "accountType=UNIFIED";
+
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode(apiSecret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const buf  = await crypto.subtle.sign("HMAC", key, enc.encode(ts + apiKey + rw + qs));
+  const sign = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+
+  const res = await fetch(`${baseUrl}/v5/account/wallet-balance?${qs}`, {
+    headers: {
+      "X-BAPI-API-KEY":     apiKey,
+      "X-BAPI-TIMESTAMP":   ts,
+      "X-BAPI-SIGN":        sign,
+      "X-BAPI-RECV-WINDOW": rw,
+    },
+  });
+
+  if (!res.headers.get("content-type")?.includes("application/json")) {
+    return { ok: false, balance: 0, error: `Bybit вернул HTTP ${res.status}. Проверьте права ключа.` };
+  }
+  const data = await res.json() as { retCode: number; retMsg: string; result?: { list?: { totalEquity?: string }[] } };
+  if (data.retCode !== 0) return { ok: false, balance: 0, error: `Bybit: ${data.retMsg}` };
+  const balance = parseFloat(data.result?.list?.[0]?.totalEquity ?? "0");
+  return { ok: true, balance };
+}
+
+// ── Клиентская верификация Binance Futures ────────────────────────────────────
+async function verifyBinanceDirect(
+  apiKey: string,
+  apiSecret: string,
+): Promise<{ ok: boolean; balance: number; error?: string }> {
+  const ts = Date.now().toString();
+  const qs = `timestamp=${ts}`;
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode(apiSecret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const buf  = await crypto.subtle.sign("HMAC", key, enc.encode(qs));
+  const sign = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+
+  const res = await fetch(`https://fapi.binance.com/fapi/v2/balance?${qs}&signature=${sign}`, {
+    headers: { "X-MBX-APIKEY": apiKey },
+  });
+  if (!res.ok) return { ok: false, balance: 0, error: `Binance HTTP ${res.status}` };
+  const data = await res.json() as { code?: number; msg?: string };
+  if (data.code && data.code < 0) return { ok: false, balance: 0, error: `Binance: ${data.msg}` };
+  return { ok: true, balance: 0 };
+}
+
 type BrokerDef = {
   id: string;
   name: string;
@@ -168,15 +229,38 @@ export default function ConnectPage() {
     setBalance(null);
 
     try {
+      const apiKey    = values["apiKey"]?.trim() ?? "";
+      const apiSecret = values["apiSecret"]?.trim() ?? "";
+      const broker    = selected.id;
+
+      // Шаг 1 — верификация напрямую из браузера (Vercel IP заблокирован Bybit)
+      let verifiedBalance = 0;
+      if (broker !== "DEMO") {
+        let verify: { ok: boolean; balance: number; error?: string };
+        if (broker === "BYBIT") {
+          verify = await verifyBybitDirect(apiKey, apiSecret, isTestnet);
+        } else {
+          verify = await verifyBinanceDirect(apiKey, apiSecret);
+        }
+        if (!verify.ok) {
+          setStatus("error");
+          setErrorMsg(verify.error ?? "Ошибка верификации");
+          return;
+        }
+        verifiedBalance = verify.balance;
+      }
+
+      // Шаг 2 — сохранение в БД (skipVerification=true — ключи уже проверены)
       const res  = await fetch("/api/accounts", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
-          broker:    selected.id,
-          apiKey:    values["apiKey"]?.trim(),
-          apiSecret: values["apiSecret"]?.trim(),
-          label:     label.trim() || null,
-          isTestnet: selected.id === "BYBIT" ? isTestnet : false,
+          broker,
+          apiKey,
+          apiSecret,
+          label:            label.trim() || null,
+          isTestnet:        broker === "BYBIT" ? isTestnet : false,
+          skipVerification: broker !== "DEMO",
         }),
       });
 
@@ -194,7 +278,7 @@ export default function ConnectPage() {
       }
 
       setStatus("connected");
-      setBalance(data.balance ?? null);
+      setBalance(data.balance ?? verifiedBalance);
 
       // Перезагрузить список аккаунтов
       await loadAccounts();
