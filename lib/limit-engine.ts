@@ -92,11 +92,12 @@ export class LimitEngine {
     if (!limits) return;
 
     const client = state.client;
-    let dailyPnl = 0, tradesCount = 0, weeklyPnl = 0, monthlyPnl = 0;
+    let dailyPnl = 0, unrealizedPnl = 0, tradesCount = 0, weeklyPnl = 0, monthlyPnl = 0;
 
     try {
-      [dailyPnl, tradesCount] = await Promise.all([
+      [dailyPnl, unrealizedPnl, tradesCount] = await Promise.all([
         client.getDailyPnl(),
+        client.getUnrealizedPnl().catch(() => 0),
         client.getTradesCount(new Date()),
       ]);
       if (limits.weeklyLossLimit)  weeklyPnl  = await client.getPnlForPeriod(this.startOfWeekMs());
@@ -108,10 +109,13 @@ export class LimitEngine {
 
     state.lastCheckAt = new Date();
 
+    // Effective daily PnL = realized (closed trades) + unrealized (open positions)
+    const effectiveDailyPnl = dailyPnl + unrealizedPnl;
+
     const checks: Array<() => BlockReason | null> = [
       () => {
-        if (dailyPnl >= 0 || !limits.dailyLossLimit) return null;
-        const loss = Math.abs(dailyPnl), pct = loss / limits.dailyLossLimit;
+        if (effectiveDailyPnl >= 0 || !limits.dailyLossLimit) return null;
+        const loss = Math.abs(effectiveDailyPnl), pct = loss / limits.dailyLossLimit;
         if (pct >= 1) return { breachType: "DAILY_LOSS_LIMIT", limitValue: limits.dailyLossLimit, actualValue: loss, description: `Дневной убыток $${loss.toFixed(2)} превысил лимит $${limits.dailyLossLimit}` };
         if (pct >= limits.warningThresholdPct / 100) this.sendWarning(fresh, limits, "DAILY_LOSS_LIMIT", loss, limits.dailyLossLimit, pct).catch(console.error);
         return null;

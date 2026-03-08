@@ -188,6 +188,7 @@ export async function checkLimitsFromDb(accountId: string, unrealizedPnl = 0): P
     const reason = `Дневной убыток $${dailyLoss.toFixed(2)} превысил лимит $${limits.dailyLossLimit} (реализовано: $${realizedDailyPnl.toFixed(2)}, открыто: $${unrealizedPnl.toFixed(2)})`;
     console.warn(`[CheckLimits] BLOCKING ${accountId}: ${reason}`);
     await _dbBlock(accountId, account.userId, limits.blockDurationHours, "DAILY_LOSS_LIMIT", limits.dailyLossLimit, dailyLoss, reason);
+    await _closePositions(account);
     return { blocked: true, reason };
   }
 
@@ -196,6 +197,7 @@ export async function checkLimitsFromDb(accountId: string, unrealizedPnl = 0): P
     const reason = `Сделок за день: ${tradesCount} (лимит: ${limits.maxDailyTrades})`;
     console.warn(`[CheckLimits] BLOCKING ${accountId}: ${reason}`);
     await _dbBlock(accountId, account.userId, limits.blockDurationHours, "DAILY_TRADE_COUNT", limits.maxDailyTrades, tradesCount, reason);
+    await _closePositions(account);
     return { blocked: true, reason };
   }
 
@@ -212,6 +214,7 @@ export async function checkLimitsFromDb(accountId: string, unrealizedPnl = 0): P
       const reason = `Недельный убыток $${weeklyLoss.toFixed(2)} превысил лимит $${limits.weeklyLossLimit}`;
       console.warn(`[CheckLimits] BLOCKING ${accountId}: ${reason}`);
       await _dbBlock(accountId, account.userId, limits.blockDurationHours, "WEEKLY_LOSS_LIMIT", limits.weeklyLossLimit, weeklyLoss, reason);
+      await _closePositions(account);
       return { blocked: true, reason };
     }
   }
@@ -229,6 +232,7 @@ export async function checkLimitsFromDb(accountId: string, unrealizedPnl = 0): P
       const reason = `Месячный убыток $${monthlyLoss.toFixed(2)} превысил лимит $${limits.monthlyLossLimit}`;
       console.warn(`[CheckLimits] BLOCKING ${accountId}: ${reason}`);
       await _dbBlock(accountId, account.userId, limits.blockDurationHours, "MONTHLY_LOSS_LIMIT", limits.monthlyLossLimit, monthlyLoss, reason);
+      await _closePositions(account);
       return { blocked: true, reason };
     }
   }
@@ -250,12 +254,31 @@ export async function checkLimitsFromDb(accountId: string, unrealizedPnl = 0): P
       const reason = `Серия убытков: ${streak} подряд (лимит: ${limits.maxConsecutiveLosses})`;
       console.warn(`[CheckLimits] BLOCKING ${accountId}: ${reason}`);
       await _dbBlock(accountId, account.userId, limits.blockDurationHours, "CONSECUTIVE_LOSSES", limits.maxConsecutiveLosses, streak, reason);
+      await _closePositions(account);
       return { blocked: true, reason };
     }
   }
 
   console.log(`[CheckLimits] account=${accountId} — all limits OK`);
   return { blocked: false };
+}
+
+// ── Закрытие всех позиций и ордеров при блокировке ────────────────────────────
+
+async function _closePositions(account: { id: string; broker: string; apiKey: string; apiSecret: string; isTestnet: boolean }): Promise<void> {
+  if (account.broker !== "BYBIT") return;
+  try {
+    const client = new BybitClient(decrypt(account.apiKey), decrypt(account.apiSecret), account.isTestnet);
+    await client.cancelAllOrders().catch((e: Error) =>
+      console.error(`[CheckLimits] cancelOrders failed (${account.id}):`, e.message)
+    );
+    await client.closeAllPositions().catch((e: Error) =>
+      console.error(`[CheckLimits] closePositions failed (${account.id}):`, e.message)
+    );
+    console.log(`[CheckLimits] Positions closed for blocked account ${account.id}`);
+  } catch (err) {
+    console.error(`[CheckLimits] _closePositions error (${account.id}):`, (err as Error).message);
+  }
 }
 
 async function _dbBlock(
