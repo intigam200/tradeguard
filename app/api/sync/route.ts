@@ -48,7 +48,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } else {
     // Синхронизировать только аккаунты этого пользователя
     const accounts = await prisma.connectedAccount.findMany({
-      where: { userId, isActive: true, broker: { notIn: ["DEMO"] } },
+      where: { userId, broker: { notIn: ["DEMO"] } },
       select: { id: true },
     });
     results = [];
@@ -94,7 +94,7 @@ export async function GET(): Promise<NextResponse> {
 
   // Синхронизировать только аккаунты этого пользователя
   const accounts = await prisma.connectedAccount.findMany({
-    where: { userId, isActive: true, broker: { notIn: ["DEMO"] } },
+    where: { userId, broker: { notIn: ["DEMO"] } },
     select: { id: true },
   });
 

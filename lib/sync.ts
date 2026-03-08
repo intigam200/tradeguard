@@ -31,7 +31,7 @@ export async function syncAccount(accountId: string): Promise<SyncResult> {
     return { accountId, broker: "UNKNOWN", synced: 0, skipped: 0, unrealizedPnl: 0, error: "Account not found" };
   }
 
-  if (!account.isActive || account.broker === "DEMO") {
+  if (account.broker === "DEMO") {
     return { accountId, broker: account.broker, synced: 0, skipped: 0, unrealizedPnl: 0 };
   }
 
@@ -47,7 +47,7 @@ export async function syncAccount(accountId: string): Promise<SyncResult> {
 
 export async function syncAllAccounts(): Promise<SyncResult[]> {
   const accounts = await prisma.connectedAccount.findMany({
-    where: { isActive: true, broker: { notIn: ["DEMO"] } },
+    where: { broker: { notIn: ["DEMO"] } },
   });
 
   const results: SyncResult[] = [];
