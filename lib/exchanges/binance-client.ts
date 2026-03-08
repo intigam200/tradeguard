@@ -234,6 +234,15 @@ export class BinanceClient {
     return trades.reduce((sum, t) => sum + parseFloat(t.realizedPnl), 0);
   }
 
+  async getUnrealizedPnl(): Promise<number> {
+    const positions = await this.restGet<Array<{ positionAmt: string; unrealizedProfit: string }>>(
+      "/fapi/v2/positionRisk", {}
+    );
+    return positions
+      .filter(p => parseFloat(p.positionAmt) !== 0)
+      .reduce((sum, p) => sum + parseFloat(p.unrealizedProfit), 0);
+  }
+
   // ── REST: Количество сделок за дату ────────────────────────────────────────
 
   async getTradesCount(date: Date): Promise<number> {

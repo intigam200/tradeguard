@@ -40,6 +40,10 @@ export class DemoClient {
     return -150;
   }
 
+  async getUnrealizedPnl(): Promise<number> {
+    return 0;
+  }
+
   async getTradesCount(_date: Date): Promise<number> {
     return 3;
   }
