@@ -17,6 +17,46 @@ type Breach   = { id: string; breachType: string; severity: string; description:
 type StatsData  = { userId: string; accounts: Account[]; limits: Limits | null; hasLimits: boolean; usage: Usage; breachesToday: number; totalBreaches: number; recentBreaches: Breach[]; };
 type LiveData   = { balance: number; dailyPnl: number; };
 
+// ── Client-side Bybit balance fetch (bypasses Vercel IP block) ────────────────
+async function fetchBybitBalance(accounts: Account[]): Promise<LiveData | null> {
+  let totalBalance  = 0;
+  let totalDailyPnl = 0;
+  let fetched       = false;
+
+  for (const acc of accounts) {
+    if ((acc as unknown as { broker: string }).broker !== "BYBIT") continue;
+    try {
+      // Sign the wallet-balance request on the server (apiSecret stays server-side)
+      const qs      = "accountType=UNIFIED";
+      const signRes = await fetch("/api/bybit/sign", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ accountId: acc.id, queryString: qs }),
+      });
+      const sign = await signRes.json() as { ok: boolean; apiKey?: string; timestamp?: string; signature?: string; recvWindow?: string; isTestnet?: boolean };
+      if (!sign.ok) continue;
+
+      const baseUrl = sign.isTestnet ? "https://api-demo.bybit.com" : "https://api.bybit.com";
+      const balRes  = await fetch(`${baseUrl}/v5/account/wallet-balance?${qs}`, {
+        headers: {
+          "X-BAPI-API-KEY":     sign.apiKey!,
+          "X-BAPI-TIMESTAMP":   sign.timestamp!,
+          "X-BAPI-SIGN":        sign.signature!,
+          "X-BAPI-RECV-WINDOW": sign.recvWindow!,
+        },
+      });
+      if (!balRes.headers.get("content-type")?.includes("application/json")) continue;
+      const balData = await balRes.json() as { retCode: number; result?: { list?: { totalEquity?: string }[] } };
+      if (balData.retCode !== 0) continue;
+
+      totalBalance += parseFloat(balData.result?.list?.[0]?.totalEquity ?? "0");
+      fetched = true;
+    } catch { /* ignore */ }
+  }
+
+  return fetched ? { balance: totalBalance, dailyPnl: totalDailyPnl } : null;
+}
+
 const limitBar      = (pct: number) => pct >= 100 ? "bg-red-500" : pct >= 70 ? "bg-yellow-400" : "bg-emerald-500";
 const severityBadge = (s: string) => s === "CRITICAL" ? "bg-red-500/20 text-red-400 border-red-500/30" : s === "VIOLATION" ? "bg-orange-500/20 text-orange-400 border-orange-500/30" : "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
 const pnlFmt        = (v: number) => { const a = Math.abs(v).toLocaleString("en-US", { maximumFractionDigits: 0 }); return (v >= 0 ? "+" : "-") + "$" + a; };
@@ -59,9 +99,8 @@ export default function Dashboard() {
 
     let statsData: StatsData | null = null;
     let tradesData: Trade[] = [];
-    let liveData: LiveData | null = null;
 
-    // Все три запроса параллельно
+    // Fetch stats + trades in parallel
     const doFetch = async () => Promise.all([
       (async () => {
         try {
@@ -78,13 +117,6 @@ export default function Dashboard() {
           if (tj.ok) tradesData = tj.trades;
         } catch (e) { console.error("[Dashboard] trades:", e); }
       })(),
-      (async () => {
-        try {
-          const lr = await withTimeout(fetch("/api/broker/live"), 8_000);
-          const lj = await lr.json() as { ok: boolean } & LiveData;
-          if (lj.ok) liveData = lj;
-        } catch (e) { console.error("[Dashboard] live:", e); }
-      })(),
     ]);
 
     const [statsStatus] = await doFetch();
@@ -92,14 +124,21 @@ export default function Dashboard() {
     // Если 401 — setup + один retry
     if (statsStatus === 401 && !statsData) {
       try { await withTimeout(fetch("/api/setup"), 3000); } catch { /* ignore */ }
-      statsData = null; tradesData = []; liveData = null;
+      statsData = null; tradesData = [];
       await doFetch();
     }
 
     setStats(statsData);
-    setLive(liveData);
     setTrades(tradesData);
     setLoading(false);
+
+    // Fetch live balance client-side — Bybit blocks Vercel IPs so we must call from browser
+    const accs = (statsData as StatsData | null)?.accounts;
+    if (accs && accs.length > 0) {
+      fetchBybitBalance(accs)
+        .then(ld => { if (ld) setLive(ld); })
+        .catch(() => {});
+    }
   }, []);
 
   useEffect(() => {

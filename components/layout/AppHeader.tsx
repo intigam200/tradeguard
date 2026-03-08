@@ -13,6 +13,22 @@ type HeaderStats = {
   dailyLossPct: number;
 };
 
+type AccountInfo = {
+  id:        string;
+  broker:    string;
+  label:     string | null;
+  isTestnet: boolean;
+};
+
+type SignResult = {
+  ok:         boolean;
+  apiKey?:    string;
+  timestamp?: string;
+  signature?: string;
+  recvWindow?: string;
+  isTestnet?: boolean;
+};
+
 const PAGE_TITLES: Record<string, [string, string]> = {
   "/dashboard": ["Dashboard",       "Дашборд"],
   "/limits":    ["Limits & Blocking","Лимиты и блокировка"],
@@ -21,6 +37,87 @@ const PAGE_TITLES: Record<string, [string, string]> = {
   "/connect":   ["Connect Broker",  "Подключение биржи"],
   "/journal":   ["Analytics",       "Аналитика"],
 };
+
+// ── Sign a Bybit request server-side (keeps apiSecret on server) ──────────────
+async function bybitSign(accountId: string, queryString: string): Promise<SignResult | null> {
+  try {
+    const res = await fetch("/api/bybit/sign", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ accountId, queryString }),
+    });
+    return await res.json() as SignResult;
+  } catch {
+    return null;
+  }
+}
+
+// ── Call Bybit API directly from browser (bypasses Vercel IP block) ───────────
+async function bybitGet<T>(
+  baseUrl: string,
+  path:    string,
+  qs:      string,
+  sign:    SignResult,
+): Promise<T | null> {
+  try {
+    const res = await fetch(`${baseUrl}${path}?${qs}`, {
+      headers: {
+        "X-BAPI-API-KEY":     sign.apiKey!,
+        "X-BAPI-TIMESTAMP":   sign.timestamp!,
+        "X-BAPI-SIGN":        sign.signature!,
+        "X-BAPI-RECV-WINDOW": sign.recvWindow!,
+      },
+    });
+    if (!res.headers.get("content-type")?.includes("application/json")) return null;
+    return await res.json() as T;
+  } catch {
+    return null;
+  }
+}
+
+// ── Sync one Bybit account from browser ──────────────────────────────────────
+async function syncBybitAccount(acc: AccountInfo): Promise<{ synced: number; skipped: number; isBlocked: boolean }> {
+  const baseUrl = acc.isTestnet ? "https://api-demo.bybit.com" : "https://api.bybit.com";
+
+  // 1. Fetch closed trades (today)
+  const todayMs = new Date(); todayMs.setUTCHours(0, 0, 0, 0);
+  const closedQs = `category=linear&limit=200&startTime=${todayMs.getTime()}`;
+  const closedSign = await bybitSign(acc.id, closedQs);
+  if (!closedSign?.ok) return { synced: 0, skipped: 0, isBlocked: false };
+
+  type ClosedPnlData = { retCode: number; result?: { list?: unknown[] } };
+  const closedData = await bybitGet<ClosedPnlData>(baseUrl, "/v5/position/closed-pnl", closedQs, closedSign);
+  const trades = closedData?.retCode === 0 ? (closedData.result?.list ?? []) : [];
+
+  // 2. Fetch unrealized PnL from open positions
+  let unrealizedPnl = 0;
+  const posQs   = "category=linear&settleCoin=USDT";
+  const posSign = await bybitSign(acc.id, posQs);
+  if (posSign?.ok) {
+    type PosData = { retCode: number; result?: { list?: { unrealisedPnl?: string; size?: string }[] } };
+    const posData = await bybitGet<PosData>(baseUrl, "/v5/position/list", posQs, posSign);
+    if (posData?.retCode === 0) {
+      unrealizedPnl = (posData.result?.list ?? [])
+        .filter(p => parseFloat(p.size ?? "0") !== 0)
+        .reduce((s, p) => s + parseFloat(p.unrealisedPnl ?? "0"), 0);
+    }
+  }
+
+  // 3. POST to server to save and check limits
+  try {
+    const importRes  = await fetch("/api/trades/import", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ accountId: acc.id, trades, unrealizedPnl }),
+    });
+    const importData = await importRes.json() as { ok: boolean; synced?: number; skipped?: number; isBlocked?: boolean };
+    if (importData.ok) {
+      return { synced: importData.synced ?? 0, skipped: importData.skipped ?? 0, isBlocked: importData.isBlocked ?? false };
+    }
+  } catch { /* ignore */ }
+
+  return { synced: 0, skipped: 0, isBlocked: false };
+}
 
 export function AppHeader() {
   const pathname = usePathname();
@@ -75,14 +172,32 @@ export function AppHeader() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // ── Client-side sync: browser fetches from Bybit directly ─────────────────
   const handleSync = async () => {
     setSyncing(true);
     try {
-      await fetch("/api/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      // Get list of connected accounts
+      const accRes  = await fetch("/api/accounts");
+      const accData = await accRes.json() as { ok: boolean; accounts?: AccountInfo[] };
+      const accounts = accData.accounts ?? [];
+
+      let anyBlocked = false;
+
+      for (const acc of accounts) {
+        if (acc.broker !== "BYBIT") continue;
+        const result = await syncBybitAccount(acc);
+        if (result.isBlocked) anyBlocked = true;
+      }
+
       setLastSync(new Date());
       await loadStats();
       window.dispatchEvent(new Event("tradeguard:synced"));
-    } finally { setSyncing(false); }
+
+      // If any account was just blocked, reload the page to show block banner
+      if (anyBlocked) window.location.reload();
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const riskLevel = hs.isBlocked
@@ -102,7 +217,7 @@ export function AppHeader() {
   const fmtTime = (iso: string) =>
     new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 
-  const minsAgo = lastSync ? Math.round((Date.now() - lastSync.getTime()) / 60_000) : null;
+  const minsAgo  = lastSync ? Math.round((Date.now() - lastSync.getTime()) / 60_000) : null;
   const syncLabel = minsAgo === null ? null : minsAgo === 0 ? t("Just synced", "Только что") : `${t("Synced", "Синхр.")} ${minsAgo}${t("m ago", "м")}`;
 
   const titles = PAGE_TITLES[pathname];
