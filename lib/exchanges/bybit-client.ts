@@ -376,6 +376,10 @@ export class BybitClient {
       body,
     });
 
+    if (!res.headers.get("content-type")?.includes("application/json")) {
+      const text = await res.text();
+      throw new Error(`[BybitClient] POST ${path} returned non-JSON (HTTP ${res.status}): ${text.slice(0, 120)}`);
+    }
     const json = await res.json() as BybitRestResponse<T>;
     if (json.retCode !== 0) {
       throw new Error(`[BybitClient] POST ${path} failed (${json.retCode}): ${json.retMsg}`);
@@ -398,6 +402,10 @@ export class BybitClient {
       },
     });
 
+    if (!res.headers.get("content-type")?.includes("application/json")) {
+      const text = await res.text();
+      throw new Error(`[BybitClient] GET ${path} returned non-JSON (HTTP ${res.status}): ${text.slice(0, 120)}`);
+    }
     const json = await res.json() as BybitRestResponse<T>;
     if (json.retCode !== 0) {
       throw new Error(`[BybitClient] GET ${path} failed (${json.retCode}): ${json.retMsg}`);
