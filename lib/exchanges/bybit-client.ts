@@ -328,6 +328,11 @@ export class BybitClient {
 
       console.log(`[BybitClient] closed-pnl page: list.length=${result.list.length} cursor=${result.nextPageCursor ?? "none"} raw=${JSON.stringify(result).slice(0, 300)}`);
 
+      // Demo accounts often return empty closed-pnl — fall back to execution list
+      if (result.list.length === 0 && !cursor) {
+        return this.getExecutionTrades(startMs);
+      }
+
       all.push(...result.list);
       cursor = result.nextPageCursor || undefined;
 
@@ -335,6 +340,44 @@ export class BybitClient {
     } while (all.length < maxRecords);
 
     return all;
+  }
+
+  // ── REST: Execution list (fallback for demo accounts) ───────────────────────
+
+  async getExecutionTrades(startMs: number): Promise<BybitClosedPnlRecord[]> {
+    type ExecRecord = {
+      orderId:   string;
+      symbol:    string;
+      side:      "Buy" | "Sell";
+      orderType: string;
+      execPrice: string;
+      execQty:   string;
+      closedPnl: string;
+      execTime:  string;
+    };
+    type R = { list: ExecRecord[]; nextPageCursor?: string };
+
+    const result = await this.restGet<R>("/v5/execution/list", {
+      category:  "linear",
+      startTime: startMs.toString(),
+      limit:     "200",
+    });
+
+    console.log(`[BybitClient] execution/list fallback: ${result.list.length} records`);
+
+    return result.list.map(e => ({
+      symbol:        e.symbol,
+      orderId:       e.orderId,
+      side:          e.side,
+      qty:           e.execQty,
+      orderType:     e.orderType,
+      avgEntryPrice: e.execPrice,
+      avgExitPrice:  e.execPrice,
+      closedPnl:     e.closedPnl ?? "0",
+      fillCount:     "1",
+      createdTime:   e.execTime,
+      updatedTime:   e.execTime,
+    }));
   }
 
   // ── REST: Количество сделок за дату ────────────────────────────────────────
