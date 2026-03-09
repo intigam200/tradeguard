@@ -72,7 +72,8 @@ async function syncBybitAccount(
   apiSecret: string,
   isTestnet: boolean
 ): Promise<SyncResult> {
-  const client = new BybitClient(decrypt(apiKey), decrypt(apiSecret), isTestnet);
+  // Force mainnet — demo keys should not be used for real limit checks
+  const client = new BybitClient(decrypt(apiKey), decrypt(apiSecret), false);
 
   // Первый запуск → 90 дней; повторный → последние 7 дней
   const existingCount = await prisma.trade.count({ where: { accountId } });
@@ -80,6 +81,8 @@ async function syncBybitAccount(
   const startMs       = isFirstSync
     ? Date.now() - 90 * 24 * 3_600_000
     : Date.now() -  7 * 24 * 3_600_000;
+
+  console.log(`[Sync] ${accountId}: isTestnet=${isTestnet} isFirstSync=${isFirstSync} startMs=${new Date(startMs).toISOString()}`);
 
   let trades;
   let unrealizedPnl = 0;
@@ -94,7 +97,7 @@ async function syncBybitAccount(
     return { accountId, broker: "BYBIT", synced: 0, skipped: 0, unrealizedPnl: 0, error: msg };
   }
 
-  console.log(`[Sync] ${accountId}: fetched ${trades.length} closed trade(s) (${isFirstSync ? "full 90-day history" : "today only"}), unrealizedPnl=${unrealizedPnl.toFixed(2)}`);
+  console.log(`[Sync] ${accountId}: fetched ${trades.length} closed trade(s), unrealizedPnl=${unrealizedPnl.toFixed(2)}`);
 
   let synced = 0;
   let skipped = 0;

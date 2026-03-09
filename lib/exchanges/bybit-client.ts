@@ -326,6 +326,8 @@ export class BybitClient {
       type R = { list: BybitClosedPnlRecord[]; nextPageCursor?: string };
       const result = await this.restGet<R>("/v5/position/closed-pnl", params);
 
+      console.log(`[BybitClient] closed-pnl page: list.length=${result.list.length} cursor=${result.nextPageCursor ?? "none"} raw=${JSON.stringify(result).slice(0, 300)}`);
+
       all.push(...result.list);
       cursor = result.nextPageCursor || undefined;
 
