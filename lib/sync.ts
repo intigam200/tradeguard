@@ -72,8 +72,7 @@ async function syncBybitAccount(
   apiSecret: string,
   isTestnet: boolean
 ): Promise<SyncResult> {
-  // Force mainnet — demo keys should not be used for real limit checks
-  const client = new BybitClient(decrypt(apiKey), decrypt(apiSecret), false);
+  const client = new BybitClient(decrypt(apiKey), decrypt(apiSecret), isTestnet);
 
   // Первый запуск → 90 дней; повторный → последние 7 дней
   const existingCount = await prisma.trade.count({ where: { accountId } });
