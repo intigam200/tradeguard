@@ -1,0 +1,15 @@
+[33m71216d1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m fix: add getUnrealizedPnl to BinanceClient and DemoClient
+[33m0afae1e[m fix: close positions on limit breach, add unrealized PnL to checks
+[33mc9e9f26[m fix: verify API keys client-side to bypass Vercel IP block
+[33mee98f2f[m fix: handle non-JSON response from Bybit API
+[33m7f5e17e[m fix: sync all accounts regardless of isActive, clean breach spam
+[33m861a461[m fix: load full 90-day trade history on first sync
+[33m04c1b61[m feat: websocket monitoring startup, heatmap fix, force-dynamic all routes
+[33ma9b14d8[m feat: monitoring poll, 364-day heatmap, notebook
+[33m5fbbc01[m fix: add force-dynamic to all API routes using cookies
+[33mf579716[m fix: run prisma generate before next build on Vercel
+[33m454e880[m fix landing: rebrand to TradeMarco, update pricing and CTA
+[33m409307e[m deploy tradeguard
+[33m848485a[m fix: auto-call /api/setup in AppShell to ensure tg_uid cookie on production
+[33ma5caaea[m fix: cron schedule 23:55 UTC for daily summary
+[33m75490f3[m feat: support chat, 5 notification toggles, i18n, mobile layout
